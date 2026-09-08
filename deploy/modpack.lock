@@ -23,10 +23,14 @@ JAVA_MAJOR=8
 
 # Client-only paths shipped in the "server pack" that the Game Server never
 # reads. fetch-modpack.sh deletes these after unpacking (ADR-0009).
+# Verified by inspecting the archive. structures/ is deliberately absent from
+# this list: its .rcst/.rcig/.rcgp/.rcbm files are Recurrent Complex worldgen
+# definitions and ARE server-side.
 CLIENT_ONLY_PATHS=(
-  "shaderpacks"
-  "resourcepacks"
-  "fancymenu_data"
+  "resources"        # 135.8 MB - menu animation frames, dsurround sounds, GUI art
+  "resourcepacks"    #  16.9 MB
+  "shaderpacks"      #   3.7 MB
+  "fancymenu_data"   #   1.7 MB - FancyMenu is a client main-menu mod
   "options.txt"
   "optionsof.txt"
   "optionsshaders.txt"
