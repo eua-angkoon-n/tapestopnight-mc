@@ -1,0 +1,51 @@
+# ── Secrets (ADR-0010) ──────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+id_ed25519*
+id_rsa*
+
+# ── Generated config: ADR-0002 build artifacts, NOT source ──────────
+# server.properties is rendered from Postgres. Committing it would invite
+# the hand-editing ADR-0002 forbids.
+server.properties
+server-icon.png
+eula.txt
+
+# ── Vendor payload: ADR-0009 keeps this out, pinned by SHA256 ───────
+*.zip
+mods/
+libraries/
+resources/
+structures/
+resourcepacks/
+shaderpacks/
+fancymenu_data/
+changelogs/
+options.txt
+optionsof.txt
+optionsshaders.txt
+# NOTE: overlay/config and overlay/scripts ARE tracked — only the
+# unpacked vendor config/ and scripts/ trees are ignored.
+/config/
+/scripts/
+
+# ── World and runtime state ─────────────────────────────────────────
+DregoraRL/
+world*/
+logs/
+crash-reports/
+backups/
+uploads/
+*.log
+
+# ── Node ────────────────────────────────────────────────────────────
+node_modules/
+.next/
+out/
+dist/
+.turbo/
+*.tsbuildinfo
+.pnpm-store/

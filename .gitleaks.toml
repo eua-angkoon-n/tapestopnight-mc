@@ -1,0 +1,34 @@
+# gitleaks config — runs as a pre-commit hook (ADR-0010).
+#
+# Rationale is recorded in ADR-0010: this project's prior art shipped
+# hardcoded database credentials in source and 2FA backup codes in a
+# plaintext file. A scanner is proportionate to that observed history,
+# not a hypothetical one.
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "discord-bot-token"
+description = "Discord bot token"
+regex = '''[MNO][a-zA-Z0-9_-]{23,27}\.[a-zA-Z0-9_-]{6}\.[a-zA-Z0-9_-]{27,}'''
+keywords = ["discord"]
+
+[[rules]]
+id = "rcon-password-assignment"
+description = "RCON password assigned a literal value"
+regex = '''(?i)rcon[._-]?password\s*[=:]\s*["']?[^\s"'$#{][^\s"']{3,}'''
+keywords = ["rcon"]
+
+[allowlist]
+description = "Placeholders and documentation are not leaks"
+paths = [
+  '''\.env\.example$''',
+  '''^docs/adr/''',
+  '''^README\.md$''',
+  '''^\.gitleaks\.toml$''',
+]
+regexes = [
+  '''CHANGEME''',
+  '''<[a-z-]+>''',
+]

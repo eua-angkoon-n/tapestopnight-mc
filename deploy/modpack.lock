@@ -1,0 +1,33 @@
+# Modpack pin (ADR-0009).
+#
+# The payload is NOT in git: mods/ alone is 565 MB across 206 jars, and git
+# cannot delta-compress jars. The zip lives in off-box storage; this file is
+# how we prove the bytes are the right ones.
+#
+# Mod version drift is the most common cause of "my client can't join".
+# fetch-modpack.sh MUST verify SHA256 before unpacking.
+
+MODPACK_NAME="RLCraft Dregora"
+MODPACK_VERSION="v1.1.2b"
+MODPACK_FILE="RLCraft Dregora v1.1.2b - server pack.zip"
+MODPACK_SIZE_BYTES=676115507
+MODPACK_SHA256="548a32645f6bf104f4f2eeea3409ba3baf162dd428f113647f16990ec270ac5a"
+
+# Where fetch-modpack.sh downloads from. Set this once storage is chosen.
+MODPACK_URL=""
+
+# Runtime the pack requires (see docs/adr and the pack's SERVER README OR DIE.txt)
+MINECRAFT_VERSION="1.12.2"
+FORGE_VERSION="14.23.5.2860"
+JAVA_MAJOR=8
+
+# Client-only paths shipped in the "server pack" that the Game Server never
+# reads. fetch-modpack.sh deletes these after unpacking (ADR-0009).
+CLIENT_ONLY_PATHS=(
+  "shaderpacks"
+  "resourcepacks"
+  "fancymenu_data"
+  "options.txt"
+  "optionsof.txt"
+  "optionsshaders.txt"
+)
