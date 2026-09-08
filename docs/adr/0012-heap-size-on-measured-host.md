@@ -87,6 +87,39 @@ creates `logs/` (owned by uid 1000) before the container starts.
 indistinguishable from a mitigation that is working.** ADR-0010 made the same
 argument for failing closed when `gitleaks` is missing.
 
+## What 7G actually measured, once GC logging worked
+
+The whole point of the GC logging was to replace argument with evidence. First
+clean boot at 7G, no players connected:
+
+| | Measured |
+|---|---|
+| Container RSS | **7.754 GiB / 10 GiB (77.5%)** |
+| Host available | 2,952 MB |
+| Heap in use | ~1,617 MB of 7,168 MB |
+| Stop-the-world events | 777 |
+| **Worst pause** | **0.383 s** |
+| p99 pause | 0.166 s |
+| Median pause | 0.0004 s |
+| **Full GCs** | **0** |
+| TPS | 20.000 (max), mean tick 1.436 ms |
+
+**The risk this ADR was written around has not materialised at 7G.** The
+concern was a single-threaded Java 8 full GC pausing the world for tens of
+seconds; there have been no full GCs at all, and the worst pause of any kind is
+383 ms. `InitiatingHeapOccupancyPercent=15` appears to be doing exactly what it
+was chosen for — reclaiming incrementally so G1 never falls back.
+
+Two honest caveats. This is an idle server: pauses grow with live data, so the
+number to re-check is the worst pause once players are on and chunks are
+loaded. And heap in use is only ~1.6 GB of 7 GB, which means the heap is not
+the constraint here — consistent with this ADR's own note that the real
+bottleneck is CPU during chunk generation, not heap space.
+
+If the worst pause under real load stays in this range, 7G is comfortably
+right. If it climbs past a couple of seconds, the evidence for 6G is now
+collectable rather than theoretical.
+
 ## The budget at `-Xmx8G`
 
 JVM resident memory is heap *plus* metaspace, code cache, GC structures, thread stacks and
