@@ -1,0 +1,21 @@
+# Default: normalise text in the repo, let checkout use the platform's endings.
+* text=auto
+
+# ── MUST be LF ──────────────────────────────────────────────────────
+# These are authored on Windows but executed on Linux. CRLF makes the
+# shebang line "/bin/bash\r", which fails as: bad interpreter: /bin/bash^M
+*.sh            text eol=lf
+Dockerfile*     text eol=lf
+*.yml           text eol=lf
+*.yaml          text eol=lf
+modpack.lock    text eol=lf
+.env.example    text eol=lf
+*.properties    text eol=lf
+
+# ── Binary ──────────────────────────────────────────────────────────
+*.png           binary
+*.jpg           binary
+*.webp          binary
+*.zip           binary
+*.jar           binary
+*.woff2         binary

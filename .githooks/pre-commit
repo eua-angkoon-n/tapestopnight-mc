@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# Secret scan before every commit (ADR-0010).
+#
+# This BLOCKS when gitleaks is missing rather than skipping the scan. A
+# silently-skipped scanner is worse than none: it gives you the confidence
+# without the check. Same reasoning as ADR-0003 defaulting unknown config
+# keys to LOCKED — fail closed.
+set -euo pipefail
+
+if ! command -v gitleaks >/dev/null 2>&1; then
+  cat >&2 <<'MSG'
+
+  ✗ gitleaks is not installed, so the secret scan cannot run.
+
+    Install it (pick one):
+      winget install gitleaks
+      scoop install gitleaks
+      go install github.com/gitleaks/gitleaks/v8@latest
+
+    Why this blocks instead of warning: ADR-0010. This project's prior art
+    shipped hardcoded database credentials in source and 2FA backup codes in
+    a plaintext file. A scanner that quietly no-ops is the worst outcome.
+
+    To bypass for one commit you know is clean:  git commit --no-verify
+
+MSG
+  exit 1
+fi
+
+gitleaks protect --staged --redact --config .gitleaks.toml --verbose
