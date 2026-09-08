@@ -15,7 +15,15 @@ future reader does not have to guess — especially where the code looks wrong o
 | [0008](./0008-reuse-discord-application.md) | Reuse the DISCO NIGHT Discord application; retire it and Prominence control |
 | [0009](./0009-git-excludes-vendor-payload.md) | Git holds source and intent, never vendor payload or generated artifacts |
 | [0010](./0010-private-repo-ci-builds.md) | Private repo; images built in CI so the Host never compiles beside the JVM |
-| [0011](./0011-4gb-heap-on-8gb-host.md) | Run at `-Xmx4G` on an 8 GB Host, against the modpack's `6G` recommendation |
+| [0011](./0011-4gb-heap-on-8gb-host.md) | ~~Run at `-Xmx4G` on an 8 GB Host~~ — **superseded by 0012** |
+| [0012](./0012-8gb-heap-on-measured-12gb-host.md) | Run at `-Xmx8G` on the measured 12 GB Host |
 
-Two of these (0006, 0008) record a choice made **against** a recommendation. They say so, and
+Three of these (0006, 0008, 0012) record a choice made **against** a recommendation. They say so, and
 they state the case for the option that was chosen — not the one that was rejected.
+
+ADR-0011 is superseded and kept unedited. It was decided on a premise that measurement later
+disproved; deleting it would hide that, and the next person deserves to see a wrong premise
+get corrected rather than a history where every call was right.
+
+Measured facts about the Host live in [`docs/host-inventory.md`](../host-inventory.md), not in
+an ADR — they are observations, not decisions.

@@ -1,3 +1,13 @@
+---
+status: superseded by ADR-0012
+---
+
+> **SUPERSEDED.** This ADR was written against a stated 8 GB Host. Phase 0 measured
+> the Host at **11,960 MB with 11,017 MB available**, and the ledger system at ~82 MB
+> rather than the feared 1.5 GB. The premise below is false. See
+> [ADR-0012](./0012-8gb-heap-on-measured-12gb-host.md), which runs `-Xmx8G`. Kept unedited
+> so the corrected premise stays visible.
+
 # Run at `-Xmx4G` on an 8 GB Host, against the modpack's `6G` recommendation
 
 `SERVER README OR DIE.txt` prescribes `-Xmx6G -Xms6G`. **We deliberately run 4 GB.** A future

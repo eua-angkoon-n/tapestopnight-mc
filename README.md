@@ -11,9 +11,10 @@ a web app for public server info and admin config, and a Discord bot for operati
 1. **Never hand-edit `server.properties` on the Host.** Postgres is the source of truth; the
    file is generated output. Your edit survives until the next Apply, then vanishes.
    → [ADR-0002](./docs/adr/0002-postgres-source-of-truth.md)
-2. **`-Xmx4G` contradicts the modpack's readme on purpose.** It says 6G. Do not "fix" it —
-   on an 8 GB Host that starts OOM-killing the game server.
-   → [ADR-0011](./docs/adr/0011-4gb-heap-on-8gb-host.md)
+2. **`-Xmx8G` is deliberate and near the Host's limit.** Java 8's G1 does full GC on a
+   single thread, so pauses scale with heap. The Aikar flags and GC logging are not
+   decoration — they are the mitigation. Do not strip them.
+   → [ADR-0012](./docs/adr/0012-8gb-heap-on-measured-12gb-host.md)
 3. **A server that looks hung for five minutes is normal.** `max-tick-time=-1` is mandatory
    because OTG structure generation takes minutes. Never add a healthcheck, never conclude
    "down" from an RCON timeout. → [ADR-0005](./docs/adr/0005-docker-itzg-minecraft-server.md)
@@ -63,8 +64,8 @@ Host, so this reports mismatches against (verified zip + overlay):
 deploy/check-drift.sh
 ```
 
-**Pre-generate the world.** Stop the web app and bot, raise `MC_MEMORY=6G`, run the pregen,
-then put it back to `4G` and remove the pregen mod. → ADR-0011
+**Pre-generate the world.** Runs at the normal `8G` with everything else up. Remove the
+pregen mod afterwards. → ADR-0012
 
 ## Grant someone admin
 
