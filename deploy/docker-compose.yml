@@ -1,0 +1,101 @@
+# Phase 1: the Game Server only. Postgres, the web app and the bot arrive in
+# later phases so that a failure here is unambiguous.
+#
+# The Host already runs the `family-ledger` compose project. This project is
+# namespaced away from it: distinct name, network, container and volume.
+name: tapestopnight-mc
+
+services:
+  mc:
+    # java8, not latest. Forge 14.23.5 / MC 1.12.2 requires Java 8 (ADR-0005);
+    # the image ships Temurin 1.8.0_312.
+    image: itzg/minecraft-server:java8
+    container_name: tapestopnight-mc
+    restart: unless-stopped
+    stdin_open: true
+    tty: true
+
+    ports:
+      # 25565 only. RCON on 25575 is reachable from inside this network and is
+      # NEVER published to the Host — see the design notes.
+      - "25565:25565"
+
+    volumes:
+      # The pack materialised by deploy/fetch-modpack.sh from the pinned
+      # SHA256. Forge installs itself in here on first boot.
+      - /srv/mc/pack:/data
+
+    environment:
+      EULA: "TRUE"
+      TYPE: FORGE
+      VERSION: "1.12.2"
+      FORGE_VERSION: "14.23.5.2860"
+      TZ: Asia/Bangkok
+
+      # ── ADR-0002 / ADR-0005 ───────────────────────────────────────
+      # MANDATORY. Without this the image regenerates server.properties from
+      # env vars on every start and erases the file rendered from Postgres.
+      # No server.properties-shaped env var may be added to this service.
+      SKIP_SERVER_PROPERTIES: "true"
+
+      # ── ADR-0012 ──────────────────────────────────────────────────
+      # 8G is deliberate and near this Host's limit. USE_AIKAR_FLAGS is the
+      # mitigation, not a nice-to-have: verified against the image, MEMORY
+      # under 12g selects Aikar's standard branch, which sets
+      # InitiatingHeapOccupancyPercent=15 (starts concurrent marking early so
+      # G1 reclaims incrementally instead of falling back to a single-threaded
+      # full GC — Java 8 has no parallel full GC, that arrived in JDK 10) and
+      # -XX:+AlwaysPreTouch (keeps the whole heap resident so it is never the
+      # thing that swaps). Do not remove either.
+      MEMORY: "8G"
+      USE_AIKAR_FLAGS: "true"
+
+      # Measure the pauses instead of arguing about them (ADR-0012).
+      # PrintGCApplicationStoppedTime is the number that matters: total time
+      # the world was frozen, which is what a player actually experiences.
+      JVM_OPTS: >-
+        -Xloggc:/data/logs/gc.log
+        -XX:+PrintGCDetails
+        -XX:+PrintGCDateStamps
+        -XX:+PrintGCApplicationStoppedTime
+        -XX:+UseGCLogFileRotation
+        -XX:NumberOfGCLogFiles=5
+        -XX:GCLogFileSize=10M
+
+      # ── RCON ──────────────────────────────────────────────────────
+      # Used by the image for graceful shutdown, and later by the bot and the
+      # Apply action. enable-rcon and rcon.password live in server.properties
+      # because SKIP_SERVER_PROPERTIES means the image will not write them.
+      ENABLE_RCON: "true"
+      RCON_PASSWORD: ${RCON_PASSWORD:?RCON_PASSWORD must be set in deploy/.env}
+
+      # Give players warning before a graceful stop rather than dropping them.
+      STOP_SERVER_ANNOUNCE_DELAY: "20"
+
+    # ── ADR-0005: no healthcheck ────────────────────────────────────
+    # The image ships one by default (mc-health, 30s interval, 120s start
+    # period, 2 retries). It must be off: max-tick-time=-1 is mandatory for
+    # this pack because OTG structure generation legitimately blocks the main
+    # thread for minutes, and first boot exceeds the start period outright. A
+    # healthcheck here reports a healthy server as failed.
+    healthcheck:
+      disable: true
+
+    # A large OTG world takes minutes to save. Cutting the save short is how
+    # world corruption happens.
+    stop_grace_period: 10m
+
+    # ── ADR-0010 / ADR-0012 ─────────────────────────────────────────
+    # mem_limit sits above expected RSS (~9.4-9.9 GB) so the cgroup bounds the
+    # JVM without strangling it. oom_score_adj biases the kernel's OOM killer
+    # away from this container: by default it targets the largest consumer,
+    # which is exactly this process, and would drop every connected player.
+    mem_limit: 10g
+    oom_score_adj: -500
+
+    networks:
+      - mc
+
+networks:
+  mc:
+    name: tapestopnight-mc
