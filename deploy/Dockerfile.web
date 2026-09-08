@@ -14,8 +14,9 @@ RUN npm ci --no-audit --no-fund --ignore-scripts
 FROM node:24-alpine AS build
 WORKDIR /repo
 ENV NEXT_TELEMETRY_DISABLED=1
+# npm workspaces hoists everything into the ROOT node_modules; there is no
+# per-workspace node_modules to copy unless a version conflict forces one.
 COPY --from=deps /repo/node_modules ./node_modules
-COPY --from=deps /repo/apps/web/node_modules ./apps/web/node_modules
 COPY package.json package-lock.json tsconfig.base.json ./
 COPY packages/core ./packages/core
 COPY apps/web ./apps/web
