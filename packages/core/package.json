@@ -1,0 +1,16 @@
+{
+  "name": "@tapestopnight/core",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./db": "./src/db/index.ts",
+    "./config": "./src/config/index.ts",
+    "./control": "./src/control/index.ts",
+    "./auth": "./src/auth/index.ts"
+  },
+  "dependencies": {
+    "drizzle-orm": "^0.38.2",
+    "postgres": "^3.4.5"
+  }
+}

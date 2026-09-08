@@ -1,0 +1,26 @@
+{
+  "compilerOptions": {
+    "target": "ES2023",
+    "lib": ["ES2023"],
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+
+    "verbatimModuleSyntax": true,
+    "isolatedModules": true,
+    "skipLibCheck": true,
+
+    // Imports carry explicit .ts extensions because Node runs this source
+    // directly via type stripping and resolves the real filename. Nothing
+    // here is ever compiled to JS: Next.js transpiles the workspace package
+    // itself, and the bot runs the TypeScript as-is. So typechecking is the
+    // only job tsc has, and it emits nothing.
+    "allowImportingTsExtensions": true,
+    "noEmit": true
+  }
+}
