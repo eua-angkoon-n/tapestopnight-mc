@@ -245,10 +245,16 @@ services:
       AUTH_TRUST_HOST: "true"
 
       # ADR-0004: one role governs both the web UI and the bot.
-      AUTH_DISCORD_ID: ${DISCORD_CLIENT_ID:?DISCORD_CLIENT_ID must be set in deploy/.env}
-      AUTH_DISCORD_SECRET: ${DISCORD_CLIENT_SECRET:?DISCORD_CLIENT_SECRET must be set in deploy/.env}
-      DISCORD_GUILD_ID: ${DISCORD_GUILD_ID:?DISCORD_GUILD_ID must be set in deploy/.env}
-      DISCORD_ADMIN_ROLE_ID: ${DISCORD_ADMIN_ROLE_ID:?DISCORD_ADMIN_ROLE_ID must be set in deploy/.env}
+      #
+      # Deliberately NOT required. The public info pages (requirement 2.3) need
+      # no Discord at all, so the site can serve them before these exist. With
+      # them unset the authorisation check fails closed — every visitor is a
+      # non-admin and /config answers 403 — which is the safe direction to
+      # degrade in. Set them to enable admin login.
+      AUTH_DISCORD_ID: ${DISCORD_CLIENT_ID:-}
+      AUTH_DISCORD_SECRET: ${DISCORD_CLIENT_SECRET:-}
+      DISCORD_GUILD_ID: ${DISCORD_GUILD_ID:-}
+      DISCORD_ADMIN_ROLE_ID: ${DISCORD_ADMIN_ROLE_ID:-}
 
       DOCKER_PROXY_URL: http://socket-proxy:2375
       MC_CONTAINER_NAME: tapestopnight-mc

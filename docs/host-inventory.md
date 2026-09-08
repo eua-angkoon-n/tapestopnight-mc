@@ -57,10 +57,20 @@ ledger.tapestopnight.com {
 }
 ```
 
-Four lines. Our site is an analogous block, so ADR-0001's proxied apex needs no new web server
-and no port contention. One wrinkle to expect: with the apex behind Cloudflare's orange cloud,
-Caddy's automatic HTTP-01 challenge has to traverse the proxy. If that misbehaves, the fix is a
-Cloudflare Origin CA certificate or a DNS-01 challenge — not disabling the proxy.
+Four lines. Our site is an analogous block, so ADR-0001's proxied apex needed no new web
+server and no port contention.
+
+**RESOLVED — the Cloudflare/ACME wrinkle did not materialise.** This section originally warned
+that Caddy's HTTP-01 challenge would have to traverse the orange cloud and might need a
+Cloudflare Origin CA certificate or DNS-01 instead. Cloudflare passes
+`/.well-known/acme-challenge` through, and issuance succeeded first try: the logs show
+`served key authentication` to several Cloudflare edge IPs, then
+`certificate obtained successfully`.
+
+Worth recording because it is misleading: for the few seconds while the certificate is being
+issued, the apex returns Cloudflare **525 SSL Handshake Failed**. That is the origin not having
+a certificate yet, not a broken configuration. Wait and retry before changing anything — I
+briefly diagnosed it as a failure because I tested seven seconds too early.
 
 ## Firewall — `ufw` active
 

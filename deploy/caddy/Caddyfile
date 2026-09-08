@@ -1,0 +1,16 @@
+# วางบล็อกนี้ใน Caddyfile ของโฮสต์ (Caddy รันบนโฮสต์ ไม่ได้อยู่ใน compose)
+ledger.tapestopnight.com {
+	encode zstd gzip
+	reverse_proxy 127.0.0.1:3001
+}
+
+# The public info pages and the admin config UI.
+#
+# The apex is Cloudflare-PROXIED, unlike ledger above. Minecraft reaches the
+# origin through the DNS-only mc. record plus an SRV record (ADR-0001), so the
+# website does not have to give up Cloudflare's TLS/CDN/DDoS to let the game
+# through. Both use one domain.
+tapestopnight.com {
+	encode zstd gzip
+	reverse_proxy 127.0.0.1:3002
+}
