@@ -16,7 +16,7 @@ future reader does not have to guess — especially where the code looks wrong o
 | [0009](./0009-git-excludes-vendor-payload.md) | Git holds source and intent, never vendor payload or generated artifacts |
 | [0010](./0010-private-repo-ci-builds.md) | Private repo; images built in CI so the Host never compiles beside the JVM |
 | [0011](./0011-4gb-heap-on-8gb-host.md) | ~~Run at `-Xmx4G` on an 8 GB Host~~ — **superseded by 0012** |
-| [0012](./0012-8gb-heap-on-measured-12gb-host.md) | Run at `-Xmx8G` on the measured 12 GB Host |
+| [0012](./0012-heap-size-on-measured-host.md) | Run at `-Xmx7G` on the measured 12 GB Host (revised down from 8G after measuring) |
 
 Three of these (0006, 0008, 0012) record a choice made **against** a recommendation. They say so, and
 they state the case for the option that was chosen — not the one that was rejected.

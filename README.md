@@ -14,7 +14,7 @@ a web app for public server info and admin config, and a Discord bot for operati
 2. **`-Xmx8G` is deliberate and near the Host's limit.** Java 8's G1 does full GC on a
    single thread, so pauses scale with heap. The Aikar flags and GC logging are not
    decoration — they are the mitigation. Do not strip them.
-   → [ADR-0012](./docs/adr/0012-8gb-heap-on-measured-12gb-host.md)
+   → [ADR-0012](./docs/adr/0012-heap-size-on-measured-host.md)
 3. **A server that looks hung for five minutes is normal.** `max-tick-time=-1` is mandatory
    because OTG structure generation takes minutes. Never add a healthcheck, never conclude
    "down" from an RCON timeout. → [ADR-0005](./docs/adr/0005-docker-itzg-minecraft-server.md)

@@ -47,12 +47,22 @@ services:
       # full GC — Java 8 has no parallel full GC, that arrived in JDK 10) and
       # -XX:+AlwaysPreTouch (keeps the whole heap resident so it is never the
       # thing that swaps). Do not remove either.
-      MEMORY: "8G"
+      # 8G was tried first and measured 9.04 GiB RSS with zero players — 90.4%
+      # of mem_limit, leaving ~500 MB for metaspace and G1 structures to grow
+      # into once players connect. 7G measures ~8.0-8.5 GiB and restores real
+      # headroom. See the "Revised after measurement" note in ADR-0012.
+      MEMORY: "7G"
       USE_AIKAR_FLAGS: "true"
 
       # Measure the pauses instead of arguing about them (ADR-0012).
       # PrintGCApplicationStoppedTime is the number that matters: total time
       # the world was frozen, which is what a player actually experiences.
+      # NOTE: /data/logs must EXIST before the JVM starts. Java 8 opens the GC
+      # log at startup and, if the directory is missing, prints
+      #   "Cannot open file /data/logs/gc.log due to No such file or directory"
+      # and carries on with no GC logging at all. The pack ships no logs/
+      # directory and log4j creates it ~55s into boot, which is far too late.
+      # deploy/prepare-host.sh creates it up front.
       JVM_OPTS: >-
         -Xloggc:/data/logs/gc.log
         -XX:+PrintGCDetails

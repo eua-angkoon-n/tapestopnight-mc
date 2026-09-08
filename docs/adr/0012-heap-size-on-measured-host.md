@@ -3,7 +3,11 @@ status: accepted
 supersedes: ADR-0011
 ---
 
-# Run at `-Xmx8G` on the measured 12 GB Host
+# Run at `-Xmx7G` on the measured 12 GB Host
+
+> Originally decided as 8G. Revised to 7G after booting it and measuring — see
+> "Revised after measurement" below. The 8G arithmetic is kept because it is why
+> 7G is the number.
 
 > **User override.** Claude recommended `-Xmx6G` for live play (the value the pack author
 > tested) with 8G reserved for the pre-generation pass only. The user chose 8G at all times.
@@ -28,6 +32,60 @@ a decision made on a wrong premise and corrected, not a history where every call
 The ledger system — the unknown ADR-0011 called "the deciding number", with a 1.5 GB ceiling —
 measures **~82 MB**: `family-ledger-app-1` at 47 MB and `family-ledger-db-1`
 (`postgres:16-alpine`) at 35 MB. Eighteen times under the ceiling.
+
+## Revised after measurement: `-Xmx7G`
+
+The 8G configuration was actually built and booted, and then measured rather
+than argued about. With **zero players connected**:
+
+```
+container : 9.041 GiB / 10 GiB   (90.4% of mem_limit)
+host      : 1,951 MB available
+non-heap  : 9.04 - 8.00 = 1.04 GiB
+```
+
+Non-heap already sat at 1.04 GiB at idle — the low end of the 1–1.5 GB this
+ADR predicted. Metaspace, code cache and G1 remembered sets all grow once
+players connect and more mod code paths execute, so RSS heads toward ~9.5 GiB
+against a 10 GB cgroup limit. Roughly 500 MB of margin, and exceeding it means
+the cgroup OOM-kills the server **with players online**.
+
+Raising `mem_limit` is not a way out. The remaining phases need ~650 MB
+(Postgres, Next.js, the bot), the OS ~700 MB and ledger ~82 MB. A 10.5 GB limit
+totals ~11.93 GB of the Host's 11.96 GB — leaving nothing for the page cache
+that chunk I/O depends on.
+
+**So the heap is 7G**, keeping `mem_limit: 10g`:
+
+| heap | measured / projected RSS | cgroup headroom | Host free after all phases |
+|---|---|---|---|
+| 8G | **9.04 GiB measured**, ~9.5 under load | ~0.5 GB | ~1.3 GB |
+| **7G (chosen)** | ~8.0–8.5 GiB | ~1.5 GB | ~2.3 GB |
+| 6G | ~7.0–7.5 GiB | ~2.5 GB | ~3.3 GB |
+
+This is the user's call again, taken on measurement rather than prediction. The
+Java 8 single-threaded-full-GC risk below still applies, just to a smaller
+heap, and every mitigation stays in force.
+
+### A prerequisite the measurement exposed
+
+GC logging silently did nothing on the first boot. The flags were all correctly
+applied — verified in `/proc/<pid>/cmdline` — but Java 8 opens the GC log at JVM
+startup, and the log emitted:
+
+```
+OpenJDK 64-Bit Server VM warning: Cannot open file /data/logs/gc.log
+due to No such file or directory
+```
+
+The pack ships no `logs/` directory, and log4j creates it about 55 seconds into
+boot — long after the JVM needed it. So the very measurement this ADR relies on
+was absent, and nothing failed loudly to say so. `deploy/prepare-host.sh` now
+creates `logs/` (owned by uid 1000) before the container starts.
+
+**The lesson worth keeping: a mitigation that reports nothing is
+indistinguishable from a mitigation that is working.** ADR-0010 made the same
+argument for failing closed when `gitleaks` is missing.
 
 ## The budget at `-Xmx8G`
 
