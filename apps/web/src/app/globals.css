@@ -1,0 +1,207 @@
+/*
+ * Design tokens — ADR-0007.
+ *
+ * One token set serves both surfaces. The public pages add serif display
+ * headings and a faint noise texture; the admin panel drops both and tightens
+ * spacing. Same colours, different density — so there is one design system to
+ * maintain, not two.
+ */
+
+:root {
+  /* Dark Fantasy. Warm blacks, not blue-blacks: RLCraft's world is soil,
+     torchlight and rust, and a cold grey would read as a dashboard. */
+  --bg: #0e0c0b;
+  --surface: #1a1614;
+  --surface-raised: #221d1a;
+  --border: #2e2724;
+  --border-strong: #453a34;
+
+  --text: #e8e0d5;
+  --muted: #9a8f84;
+  --faint: #6b6259;
+
+  --accent: #c75b2a; /* ember */
+  --accent-hot: #e07440;
+  --danger: #a32e23;
+
+  /* Edit Tier signalling. Colour is REINFORCEMENT ONLY — the tiers differ
+     structurally (ADR-0007), because ember, amber and red all sit in one hue
+     zone and roughly 8% of men with red-green colour vision deficiency cannot
+     separate them. A signal that stops someone destroying the world must not
+     depend on hue. */
+  --tier-guarded: #d9a21b;
+  --tier-locked: #5b6470; /* deliberately cool, so it cannot be confused
+                             with the warm accent or the danger red */
+
+  --ok: #4e8b57;
+
+  /* Thai needs more room than English. Vowels stack above the line and tone
+     marks stack above those; at 1.5 they collide with the line above. */
+  --leading: 1.75;
+  --leading-tight: 1.45; /* latin-only display text */
+
+  /* The -loaded variables come from next/font (see layout.tsx), which
+     self-hosts the files and sets a matching size-adjust fallback so the
+     layout does not shift when the webfont arrives. */
+  --font-body: var(--font-body-loaded), "IBM Plex Sans Thai", system-ui,
+    -apple-system, "Segoe UI", sans-serif;
+  --font-display: var(--font-display-loaded), Georgia, serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "Cascadia Code", monospace;
+
+  --radius: 6px;
+  --radius-lg: 10px;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  line-height: var(--leading);
+  -webkit-font-smoothing: antialiased;
+}
+
+/*
+ * Headings use SIZE and WEIGHT for hierarchy, never text-transform.
+ * Thai has no capital letters, so uppercase and small-caps — staples of
+ * dark-fantasy styling — simply do nothing to Thai text while shouting at the
+ * English next to it (ADR-0007).
+ */
+h1,
+h2,
+h3 {
+  line-height: var(--leading-tight);
+  margin: 0 0 0.5em;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+h1 {
+  font-size: clamp(1.65rem, 4vw, 2.4rem);
+}
+h2 {
+  font-size: clamp(1.2rem, 2.5vw, 1.5rem);
+}
+
+a {
+  color: var(--accent-hot);
+  text-underline-offset: 3px;
+}
+
+code,
+kbd,
+.mono {
+  font-family: var(--font-mono);
+}
+
+/* Latin-only display type may use the serif; Thai body text must not, because
+   the serif has no Thai coverage and would fall back mid-line. */
+.display {
+  font-family: var(--font-display);
+  letter-spacing: 0.01em;
+}
+
+.wrap {
+  width: 100%;
+  max-width: 68rem;
+  margin: 0 auto;
+  padding: 0 1.25rem;
+}
+
+/* The hero's atmosphere. A texture, not a photograph: there is no Dregora
+   artwork to hand yet, and this degrades to a plain dark panel rather than a
+   broken image. Swapping in real art later is a background-image change. */
+.hero {
+  position: relative;
+  overflow: hidden;
+  border-bottom: 1px solid var(--border);
+  background:
+    radial-gradient(120% 90% at 15% 0%, #2a1a12 0%, transparent 60%),
+    radial-gradient(100% 80% at 90% 20%, #1d1a26 0%, transparent 55%),
+    linear-gradient(180deg, #14100e 0%, var(--bg) 100%);
+}
+
+.hero::after {
+  /* Fine grain, so the large flat gradients do not look like a web form. */
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.35;
+  background-image: url("data:image/svg+xml;utf8,\
+<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'>\
+<filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/>\
+<feColorMatrix type='saturate' values='0'/></filter>\
+<rect width='140' height='140' filter='url(%23n)' opacity='0.5'/></svg>");
+}
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+
+.muted {
+  color: var(--muted);
+}
+.faint {
+  color: var(--faint);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.7rem 1.15rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border-strong);
+  background: var(--surface-raised);
+  color: var(--text);
+  font: inherit;
+  line-height: 1.2;
+  cursor: pointer;
+  text-decoration: none;
+  transition: border-color 120ms ease, background 120ms ease;
+}
+
+.btn:hover {
+  border-color: var(--accent);
+  background: #2a221d;
+}
+
+.btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #14100e;
+  font-weight: 600;
+}
+
+.btn-primary:hover {
+  background: var(--accent-hot);
+  border-color: var(--accent-hot);
+}
+
+/* Focus must stay obvious on every surface. The tier design already relies on
+   keyboard reachability being meaningful — a LOCKED field is not focusable at
+   all — so focus styling is load-bearing, not decoration. */
+:focus-visible {
+  outline: 2px solid var(--accent-hot);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

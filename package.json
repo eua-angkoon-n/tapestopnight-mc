@@ -11,7 +11,7 @@
     "apps/*"
   ],
   "scripts": {
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p apps/web/tsconfig.json",
     "db:generate": "drizzle-kit generate --config=db/drizzle.config.ts",
     "db:migrate": "node --experimental-strip-types db/migrate.ts",
     "db:seed": "node --experimental-strip-types db/seed/seed.ts",

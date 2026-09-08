@@ -1,5 +1,9 @@
 {
   "extends": "./tsconfig.base.json",
-  "include": ["packages/**/*.ts", "apps/**/*.ts", "db/**/*.ts"],
-  "exclude": ["node_modules", "**/dist", "**/.next"]
+  // apps/web is EXCLUDED on purpose. It is a Next.js project with its own
+  // tsconfig (Bundler resolution, JSX, the @/* alias); typechecking it with
+  // these Node settings produces errors that say nothing about the code.
+  // `npm run typecheck` runs both projects.
+  "include": ["packages/**/*.ts", "apps/poller/**/*.ts", "db/**/*.ts"],
+  "exclude": ["node_modules", "**/dist", "**/.next", "apps/web"]
 }

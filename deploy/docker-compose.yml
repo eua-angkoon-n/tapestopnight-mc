@@ -208,7 +208,7 @@ services:
     # The ONLY thing that probes the Game Server. Everything else reads the
     # cache row it writes, so the Game Server sees constant probe load no
     # matter how many people are looking at the site.
-    image: ${POLLER_IMAGE:-ghcr.io/tapestopnight/mc-poller:latest}
+    image: ${POLLER_IMAGE:-ghcr.io/eua-angkoon-n/mc-poller:latest}
     container_name: tapestopnight-poller
     restart: unless-stopped
     environment:
