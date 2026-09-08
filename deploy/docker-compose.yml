@@ -1,6 +1,5 @@
-# Phase 1-4: the Game Server, Postgres, the socket proxy and the Status Poller.
-# The web app and the bot arrive in later phases so that a failure stays
-# attributable to one thing.
+# Phase 1-5: the Game Server, Postgres, the socket proxy, the Status Poller and
+# the web app. The Discord bot arrives in Phase 6.
 #
 # The Host already runs the `family-ledger` compose project. This project is
 # namespaced away from it: distinct name, network, container and volume.
@@ -225,6 +224,60 @@ services:
       socket-proxy:
         condition: service_started
     mem_limit: 128m
+    networks:
+      - mc
+
+  # ── Phase 5: public pages + admin config UI ───────────────────────
+  web:
+    image: ${WEB_IMAGE:-ghcr.io/eua-angkoon-n/mc-web:latest}
+    container_name: tapestopnight-web
+    restart: unless-stopped
+
+    # Loopback only, reached through Caddy — the same shape family-ledger
+    # already uses on this Host (127.0.0.1:3001).
+    ports:
+      - "127.0.0.1:3002:3000"
+
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL must be set in deploy/.env}
+      AUTH_SECRET: ${AUTH_SECRET:?AUTH_SECRET must be set in deploy/.env}
+      AUTH_URL: ${AUTH_URL:-https://tapestopnight.com}
+      AUTH_TRUST_HOST: "true"
+
+      # ADR-0004: one role governs both the web UI and the bot.
+      AUTH_DISCORD_ID: ${DISCORD_CLIENT_ID:?DISCORD_CLIENT_ID must be set in deploy/.env}
+      AUTH_DISCORD_SECRET: ${DISCORD_CLIENT_SECRET:?DISCORD_CLIENT_SECRET must be set in deploy/.env}
+      DISCORD_GUILD_ID: ${DISCORD_GUILD_ID:?DISCORD_GUILD_ID must be set in deploy/.env}
+      DISCORD_ADMIN_ROLE_ID: ${DISCORD_ADMIN_ROLE_ID:?DISCORD_ADMIN_ROLE_ID must be set in deploy/.env}
+
+      DOCKER_PROXY_URL: http://socket-proxy:2375
+      MC_CONTAINER_NAME: tapestopnight-mc
+      PACK_DIR: /pack
+      TZ: Asia/Bangkok
+
+    volumes:
+      # ⚠ KNOWN PRIVILEGE, recorded rather than glossed over.
+      #
+      # Apply (ADR-0002) renders server.properties and must write it where the
+      # Game Server reads it, and an atomic write needs rename(), which needs
+      # the containing directory. So the pack directory is mounted read-write,
+      # which also means this container could write into mods/ — i.e. an
+      # admin-level web compromise could reach code execution inside the JVM.
+      #
+      # Weighed against: an admin can already change config and restart the
+      # server, so this widens an existing capability rather than creating a
+      # new class of one. Narrowing it properly needs a small purpose-built
+      # writer sidecar that accepts only a rendered properties file — the same
+      # shape as the socket-proxy gap noted above, and the same answer.
+      - /srv/mc/pack:/pack
+
+    depends_on:
+      db:
+        condition: service_healthy
+      socket-proxy:
+        condition: service_started
+
+    mem_limit: 384m
     networks:
       - mc
 

@@ -1,0 +1,34 @@
+# The admin + public web app.
+#
+# Built in CI and pulled by the Host (ADR-0010): this build peaks around
+# 1-2 GB, and running that beside a 7 GB JVM with players connected is exactly
+# the scenario where the kernel's OOM killer picks the game server.
+FROM node:24-alpine AS deps
+WORKDIR /repo
+COPY package.json package-lock.json ./
+COPY packages/core/package.json packages/core/
+COPY apps/web/package.json apps/web/
+COPY apps/poller/package.json apps/poller/
+RUN npm ci --no-audit --no-fund --ignore-scripts
+
+FROM node:24-alpine AS build
+WORKDIR /repo
+ENV NEXT_TELEMETRY_DISABLED=1
+COPY --from=deps /repo/node_modules ./node_modules
+COPY --from=deps /repo/apps/web/node_modules ./apps/web/node_modules
+COPY package.json package-lock.json tsconfig.base.json ./
+COPY packages/core ./packages/core
+COPY apps/web ./apps/web
+RUN cd apps/web && npx next build
+
+FROM node:24-alpine AS runtime
+WORKDIR /app
+ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 PORT=3000
+# `output: standalone` traces only the dependencies actually reached, which is
+# a real reduction in resident memory on a Host that budgets every megabyte.
+COPY --from=build /repo/apps/web/.next/standalone ./
+COPY --from=build /repo/apps/web/.next/static ./apps/web/.next/static
+COPY --from=build /repo/apps/web/public ./apps/web/public
+USER node
+EXPOSE 3000
+CMD ["node", "apps/web/server.js"]

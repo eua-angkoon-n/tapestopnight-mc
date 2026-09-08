@@ -9,9 +9,17 @@ const config: NextConfig = {
   // packages/core is TypeScript source, consumed directly rather than built.
   transpilePackages: ["@tapestopnight/core"],
 
-  // The public pages read the Status Poller's cache row, never the Game Server.
-  // Nothing here should be statically cached at build time.
-  experimental: { staleTimes: { dynamic: 0 } },
+  experimental: {
+    // The public pages read the Status Poller's cache row, never the Game
+    // Server. Nothing here should be statically cached at build time.
+    staleTimes: { dynamic: 0 },
+
+    // Enables forbidden() so the admin route can answer a real HTTP 403.
+    // The plan's verification for Phase 5 is explicit that a non-admin hitting
+    // /config must be refused SERVER-SIDE and tested by URL rather than by UI,
+    // and a 404 or a redirect would not be the same claim.
+    authInterrupts: true,
+  },
 
   poweredByHeader: false,
 };
