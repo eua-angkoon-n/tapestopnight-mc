@@ -1,0 +1,78 @@
+# Build images in CI and push them to GHCR — ADR-0010.
+#
+# The Host only ever runs `docker compose pull && up -d`. The reason is a
+# specific failure mode, not tidiness: a Next.js production build peaks around
+# 1-2 GB, and running that beside a 7 GB JVM with players connected risks the
+# kernel's OOM killer picking the largest consumer, which is the game server.
+name: build
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --no-audit --no-fund --ignore-scripts
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Renderer must be faithful before it can touch server.properties
+        # ADR-0002's guarantee, checked without a database so a failure here
+        # means the renderer is wrong rather than the data being wrong.
+        run: |
+          cp db/fixtures/pack-server.properties /tmp/original.properties
+          node db/render-check.ts /tmp/original.properties
+
+  images:
+    # Only publish from main and tags; a pull request gets the checks, not a push.
+    if: github.event_name == 'push'
+    needs: check
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        include:
+          - name: mc-poller
+            dockerfile: deploy/Dockerfile.poller
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.name }}
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=sha,format=long
+            type=ref,event=tag
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          # Rollback is pulling a previous tag, so every build is addressable
+          # by its commit sha as well as by `latest`.
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

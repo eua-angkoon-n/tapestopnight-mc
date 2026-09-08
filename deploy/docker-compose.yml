@@ -1,5 +1,6 @@
-# Phase 1-3: the Game Server and Postgres. The web app and the bot arrive in
-# later phases so that a failure stays attributable to one thing.
+# Phase 1-4: the Game Server, Postgres, the socket proxy and the Status Poller.
+# The web app and the bot arrive in later phases so that a failure stays
+# attributable to one thing.
 #
 # The Host already runs the `family-ledger` compose project. This project is
 # namespaced away from it: distinct name, network, container and volume.
@@ -152,6 +153,78 @@ services:
       retries: 5
       start_period: 20s
 
+    networks:
+      - mc
+
+  # ── Phase 4: scoped Docker access (ADR-0005) ──────────────────────
+  socket-proxy:
+    # The control plane must be able to start and stop the Game Server, but
+    # mounting /var/run/docker.sock into it would be equivalent to root on a
+    # Host that also runs the ledger system. This proxy sits in between.
+    #
+    # HONEST LIMITATION: ADR-0005 specified scoping to
+    #   POST /containers/{mc}/{start,stop,restart}
+    # This proxy filters by API *section*, not by endpoint or container name, so
+    # CONTAINERS=1 plus POST=1 is the tightest it can express — which also
+    # permits creating and deleting containers. That is far narrower than the
+    # raw socket but broader than the ADR claimed. Recorded rather than glossed
+    # over; tightening it further needs a purpose-built shim.
+    image: tecnativa/docker-socket-proxy:0.3.0
+    container_name: tapestopnight-socket-proxy
+    restart: unless-stopped
+    environment:
+      CONTAINERS: "1"
+      POST: "1"
+      # Everything else stays off. Listed explicitly so a future reader can see
+      # these were considered rather than left to defaults.
+      IMAGES: "0"
+      NETWORKS: "0"
+      VOLUMES: "0"
+      EXEC: "0"
+      INFO: "0"
+      AUTH: "0"
+      SECRETS: "0"
+      SWARM: "0"
+      SYSTEM: "0"
+      PLUGINS: "0"
+      SERVICES: "0"
+      TASKS: "0"
+      NODES: "0"
+      BUILD: "0"
+      COMMIT: "0"
+      CONFIGS: "0"
+      DISTRIBUTION: "0"
+      SESSION: "0"
+    volumes:
+      # Read-only: the proxy needs to talk to the daemon, not to be able to
+      # replace the socket.
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    mem_limit: 64m
+    networks:
+      - mc
+
+  # ── Phase 4: the Status Poller ────────────────────────────────────
+  poller:
+    # The ONLY thing that probes the Game Server. Everything else reads the
+    # cache row it writes, so the Game Server sees constant probe load no
+    # matter how many people are looking at the site.
+    image: ${POLLER_IMAGE:-ghcr.io/tapestopnight/mc-poller:latest}
+    container_name: tapestopnight-poller
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL must be set in deploy/.env}
+      MC_SLP_HOST: mc
+      MC_SLP_PORT: "25565"
+      DOCKER_PROXY_URL: http://socket-proxy:2375
+      MC_CONTAINER_NAME: tapestopnight-mc
+      POLL_INTERVAL_MS: "15000"
+      TZ: Asia/Bangkok
+    depends_on:
+      db:
+        condition: service_healthy
+      socket-proxy:
+        condition: service_started
+    mem_limit: 128m
     networks:
       - mc
 

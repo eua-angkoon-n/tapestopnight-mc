@@ -1,0 +1,21 @@
+# The Status Poller. Small on purpose: it exists to make "only one thing probes
+# the Game Server" a structural fact rather than a convention.
+FROM node:24-alpine AS deps
+WORKDIR /repo
+# Only the manifests, so this layer caches until dependencies actually change.
+COPY package.json package-lock.json ./
+COPY packages/core/package.json packages/core/
+COPY apps/poller/package.json apps/poller/
+RUN npm ci --omit=dev --no-audit --no-fund --ignore-scripts
+
+FROM node:24-alpine AS runtime
+WORKDIR /repo
+ENV NODE_ENV=production
+# Node runs the TypeScript directly via type stripping; nothing is compiled to
+# JS here, which is also why the sources carry explicit .ts import extensions.
+COPY --from=deps /repo/node_modules ./node_modules
+COPY package.json ./
+COPY packages/core ./packages/core
+COPY apps/poller ./apps/poller
+USER node
+CMD ["node", "apps/poller/src/main.ts"]

@@ -1,0 +1,8 @@
+{
+  "name": "@tapestopnight/poller",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": { "start": "node src/main.ts" },
+  "dependencies": { "@tapestopnight/core": "*" }
+}
