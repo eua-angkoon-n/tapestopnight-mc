@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { IBM_Plex_Sans_Thai, Cinzel } from "next/font/google";
 
+import { SiteHeader } from "@/components/SiteHeader";
+
 import "./globals.css";
 
 /*
@@ -37,7 +39,10 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="th">
-      <body className={`${body.variable} ${display.variable}`}>{children}</body>
+      <body className={`${body.variable} ${display.variable}`}>
+        <SiteHeader />
+        {children}
+      </body>
     </html>
   );
 }
