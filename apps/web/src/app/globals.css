@@ -395,3 +395,12 @@ kbd,
     display: none;
   }
 }
+
+/* Near-full-bleed container. `.wrap` caps at 68rem, which is right for reading
+   but far too narrow for an embedded wiki that has its own sidebar and needs
+   room to lay out like a real page. Small gutters instead of a max width. */
+.wrap-wide {
+  width: 100%;
+  margin: 0 auto;
+  padding: 0 clamp(0.75rem, 2vw, 2rem);
+}

@@ -29,9 +29,8 @@ const GITHUB_URL = "https://github.com/eua-angkoon-n";
   unauthenticated rate limit that fails in a way visitors would see.
 */
 const AUTHOR = {
-  name: "Eua-angkoon Nutalaya",
-  handle: "eua-angkoon-n",
-  location: "Samut Sakhon, Thailand",
+  name: "tape_stop_night",
+  location: "Thailand",
 } as const;
 
 export default async function HomePage() {
@@ -172,8 +171,8 @@ export default async function HomePage() {
       </section>
 
       {/* ── 2. Wiki ─────────────────────────────────────────────── */}
-      <section id="wiki" style={{ padding: "4.5rem 0" }}>
-        <div className="wrap">
+      <section id="wiki" style={{ padding: "3.5rem 0" }}>
+        <div className="wrap-wide">
           <header
             style={{
               display: "flex",
@@ -189,7 +188,7 @@ export default async function HomePage() {
                 Wiki
               </h2>
               <p className="muted" style={{ margin: "0.4rem 0 0", maxWidth: "44rem" }}>
-                คู่มือ RLCraft Dregora ฉบับเต็ม อ่านได้จากตรงนี้เลย ไม่ต้องออกจากหน้าเว็บ
+                คู่มือ RLCraft Dregora
               </p>
             </div>
             {/*
@@ -215,7 +214,10 @@ export default async function HomePage() {
                 title="RLCraft Dregora Wiki"
                 loading="lazy"
                 referrerPolicy="no-referrer-when-downgrade"
-                style={{ height: "78vh", minHeight: "30rem" }}
+                /* Nearly the whole viewport. dvh, not vh: on mobile the
+                   address bar retracts, and vh would leave the frame taller
+                   than the screen with its bottom edge permanently cut off. */
+                style={{ height: "88dvh", minHeight: "34rem" }}
               />
             </div>
           ) : (
@@ -246,12 +248,11 @@ export default async function HomePage() {
                     lineHeight: "var(--leading-tight)",
                   }}
                 >
-                  เกี่ยวกับคนทำ
+                  About Me
                 </h2>
                 <p className="muted" style={{ margin: 0, maxWidth: "32rem" }}>
-                  เซิร์ฟเวอร์นี้กับหน้าเว็บทั้งหมด รวมถึงบอท Discord และระบบตั้งค่าหลังบ้าน
-                  สร้างและดูแลโดย <strong style={{ color: "var(--text)" }}>{AUTHOR.name}</strong>{" "}
-                  โค้ดทั้งหมดเขียนเองตั้งแต่ต้น
+                  เซิร์ฟเวอร์และหน้าเว็บทั้งหมด รวมถึงบอท Discord สร้างและดูแลโดย{" "}
+                  <strong style={{ color: "var(--text)" }}>{AUTHOR.name}</strong>
                 </p>
                 <p className="faint" style={{ margin: "0.75rem 0 0", fontSize: "0.9rem" }}>
                   {AUTHOR.location}
@@ -265,7 +266,7 @@ export default async function HomePage() {
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  GitHub · {AUTHOR.handle}
+                  GitHub ↗
                 </a>
               </div>
             </div>
