@@ -1,3 +1,5 @@
+import { auth } from "@/auth";
+
 /**
  * Rendered with an HTTP 403 by forbidden() — ADR-0004.
  *
@@ -5,17 +7,41 @@
  * matters for the plan's verification: "hidden from the nav" is not a refusal,
  * and this page exists so the refusal is something you can observe with curl.
  */
-export default function Forbidden() {
+export default async function Forbidden() {
+  // A refusal because Discord could not be ASKED is a different problem from a
+  // refusal because Discord said no, and it needs different advice: one is
+  // "get the role", the other is "sign in again, the role is fine".
+  const session = await auth();
+  const couldNotCheck = session?.adminCheckFailed ?? false;
+
   return (
     <main className="wrap" style={{ padding: "5rem 1.25rem", maxWidth: "34rem" }}>
-      <h1 style={{ fontSize: "1.5rem" }}>ไม่มีสิทธิ์เข้าหน้านี้</h1>
-      <p className="muted">
-        หน้าตั้งค่าเปิดให้เฉพาะผู้ที่มี role แอดมินใน Discord ของเซิร์ฟเวอร์เท่านั้น
-      </p>
-      <p className="faint" style={{ fontSize: "0.9rem" }}>
-        ถ้าคิดว่าควรเข้าได้ ให้แอดมินตรวจว่า role ถูกกำหนดให้บัญชี Discord ของคุณแล้ว
-        การให้สิทธิ์ทำที่เดียวคือการเพิ่ม role นั้น
-      </p>
+      <h1 style={{ fontSize: "1.5rem" }}>
+        {couldNotCheck ? "ตรวจสอบสิทธิ์ไม่สำเร็จ" : "ไม่มีสิทธิ์เข้าหน้านี้"}
+      </h1>
+      {couldNotCheck ? (
+        <>
+          <p className="muted">
+            ระบบถาม Discord ว่าคุณถือ role อะไรอยู่ไม่สำเร็จ จึงปฏิเสธไว้ก่อนเพื่อความปลอดภัย
+            — <strong>ไม่ได้แปลว่า role ของคุณผิด</strong>
+          </p>
+          <p className="faint" style={{ fontSize: "0.9rem" }}>
+            มักแก้ได้ด้วยการออกจากระบบแล้วเข้าใหม่ เพราะการเข้าใหม่จะขอสิทธิ์อ่าน role
+            จาก Discord อีกครั้ง ถ้ายังไม่หาย แปลว่าเป็นฝั่ง Discord เอง
+            รายละเอียดจะอยู่ใน log ของเว็บแล้ว
+          </p>
+        </>
+      ) : (
+        <>
+          <p className="muted">
+            หน้าตั้งค่าเปิดให้เฉพาะผู้ที่มี role แอดมินใน Discord ของเซิร์ฟเวอร์เท่านั้น
+          </p>
+          <p className="faint" style={{ fontSize: "0.9rem" }}>
+            ถ้าคิดว่าควรเข้าได้ ให้แอดมินตรวจว่า role ถูกกำหนดให้บัญชี Discord ของคุณแล้ว
+            การให้สิทธิ์ทำที่เดียวคือการเพิ่ม role นั้น
+          </p>
+        </>
+      )}
       <p style={{ marginTop: "1.5rem" }}>
         <a className="btn" href="/">กลับหน้าแรก</a>
       </p>

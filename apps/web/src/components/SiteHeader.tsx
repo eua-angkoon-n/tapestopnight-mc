@@ -47,7 +47,20 @@ export async function SiteHeader() {
             <>
               <span className="muted">
                 {session.user?.name ?? "ล็อกอินแล้ว"}
-                {!session.isAdmin ? <span className="faint"> · ไม่ใช่แอดมิน</span> : null}
+                {/*
+                  Three states, not two. Saying "not an admin" when Discord
+                  simply could not be reached sends someone to re-check a role
+                  that was never the problem — which is exactly what happened
+                  once already.
+                */}
+                {session.adminCheckFailed ? (
+                  <span style={{ color: "var(--tier-guarded)" }}>
+                    {" "}
+                    · ตรวจสิทธิ์กับ Discord ไม่สำเร็จ
+                  </span>
+                ) : !session.isAdmin ? (
+                  <span className="faint"> · ไม่ใช่แอดมิน</span>
+                ) : null}
               </span>
               <form
                 action={async () => {
