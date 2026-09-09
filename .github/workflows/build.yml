@@ -35,6 +35,11 @@ jobs:
         run: |
           cp db/fixtures/pack-server.properties /tmp/original.properties
           node db/render-check.ts /tmp/original.properties
+      - name: Icon validator must reject anything that is not exactly 64x64
+        # The failure it guards is silent: Minecraft ignores a wrongly-sized
+        # server-icon.png without an error, so a regression here would ship
+        # looking like a success. ADR-0013.
+        run: npm run icon:check
 
   images:
     # Only publish from main and tags; a pull request gets the checks, not a push.

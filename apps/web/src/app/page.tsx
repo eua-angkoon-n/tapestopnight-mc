@@ -27,6 +27,33 @@ export default async function HomePage() {
         <div className="wrap" style={{ position: "relative", zIndex: 1, padding: "3.5rem 1.25rem 3rem" }}>
           <div style={{ display: "flex", flexDirection: "column", gap: "1.35rem", maxWidth: "44rem" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "1rem", flexWrap: "wrap" }}>
+              {/*
+                Rendered from the admin's original upload, not the 64x64
+                derivative — that one exists for Minecraft's server list and
+                would be a blurry mess at this size. Shown only when an icon
+                exists: an empty frame is worse than no frame, the same rule
+                the offline state follows.
+
+                Plain <img>, not next/image: the optimizer would pull in sharp,
+                which is the dependency the whole icon pipeline avoids.
+              */}
+              {info?.iconSha ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={`/api/icon?h=${info.iconSha.slice(0, 12)}`}
+                  alt=""
+                  width={72}
+                  height={72}
+                  style={{
+                    display: "block",
+                    width: 72,
+                    height: 72,
+                    borderRadius: "var(--radius)",
+                    border: "1px solid var(--border)",
+                    objectFit: "cover",
+                  }}
+                />
+              ) : null}
               <h1 className="display" style={{ margin: 0 }}>
                 {info?.modpackName ?? "RLCraft Dregora"}
               </h1>

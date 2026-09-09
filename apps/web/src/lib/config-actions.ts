@@ -3,8 +3,15 @@
 import { revalidatePath } from "next/cache";
 import { eq } from "drizzle-orm";
 
-import { configKey, configHistory, createDb } from "@tapestopnight/core/db";
-import { renderFromDb, tierFor } from "@tapestopnight/core/config";
+import { configKey, configHistory, createDb, serverInfo } from "@tapestopnight/core/db";
+import {
+  IconError,
+  assertIcon64,
+  assertSource,
+  renderFromDb,
+  sha256Hex,
+  tierFor,
+} from "@tapestopnight/core/config";
 import { restart } from "@tapestopnight/core/control";
 import { writeFile, mkdir, rename } from "node:fs/promises";
 import { dirname, join } from "node:path";
@@ -12,6 +19,28 @@ import { dirname, join } from "node:path";
 import { requireAdmin } from "./admin";
 
 const PACK_DIR = process.env.PACK_DIR ?? "/pack";
+
+/**
+ * The history key for the Server Icon.
+ *
+ * Not a server.properties key - the icon is a file, not a property - but it is
+ * still a config change an admin made, and the audit trail should be able to
+ * answer "who changed the icon and when" alongside everything else.
+ */
+const ICON_HISTORY_KEY = "server-icon";
+
+/**
+ * Write a file the way ADR-0002's Apply must: to a temp path, then rename.
+ *
+ * A crash midway through a direct write leaves the Game Server with a
+ * truncated file, and it reads both of these at process start.
+ */
+async function writeAtomically(target: string, data: string | Uint8Array): Promise<void> {
+  const tmp = `${target}.tmp`;
+  await mkdir(dirname(target), { recursive: true });
+  await writeFile(tmp, data);
+  await rename(tmp, target);
+}
 
 export interface ActionResult {
   readonly ok: boolean;
@@ -78,6 +107,94 @@ export async function setConfigValue(key: string, value: string): Promise<Action
 }
 
 /**
+ * Upload the Server Icon.
+ *
+ * Two files arrive: the admin's source image, and the 64x64 PNG the browser
+ * derived from it. Both are validated from their own bytes - the declared
+ * Content-Type is never consulted - because the failure this feature exists to
+ * prevent is silent: Minecraft ignores an icon that is not exactly 64x64,
+ * without an error or a log line, so an unchecked upload looks like a success
+ * forever.
+ *
+ * Storing is not applying. The icon reaches players only through Apply, which
+ * restarts the Game Server, because Minecraft reads server-icon.png once at
+ * process start.
+ */
+export async function uploadServerIcon(form: FormData): Promise<ActionResult> {
+  const { discordId } = await requireAdmin();
+
+  const source = form.get("source");
+  const derived = form.get("icon64");
+  if (!(source instanceof File) || !(derived instanceof File)) {
+    return { ok: false, message: "ฟอร์มไม่ครบ — ต้องมีทั้งรูปต้นฉบับและไอคอน 64×64 ที่ย่อแล้ว" };
+  }
+
+  const sourceBytes = Buffer.from(await source.arrayBuffer());
+  const icon64Bytes = Buffer.from(await derived.arrayBuffer());
+
+  let measured;
+  try {
+    measured = assertSource(sourceBytes);
+    assertIcon64(icon64Bytes);
+  } catch (err) {
+    // An IconError is a message written for the admin. Anything else is a bug
+    // and should not be dressed up as user-facing advice.
+    if (err instanceof IconError) return { ok: false, message: err.message };
+    throw err;
+  }
+
+  const sha = sha256Hex(sourceBytes);
+
+  const { db, sql } = createDb();
+  try {
+    const rows = await db
+      .select({ sha: serverInfo.iconSourceSha256 })
+      .from(serverInfo)
+      .where(eq(serverInfo.id, 1))
+      .limit(1);
+
+    const before = rows[0];
+    if (!before) {
+      return { ok: false, message: "ไม่พบแถว server_info — ฐานข้อมูลยังไม่ได้ seed" };
+    }
+    if (before.sha === sha) {
+      return { ok: true, message: "รูปเดิมอยู่แล้ว ไม่มีอะไรเปลี่ยน" };
+    }
+
+    await db
+      .update(serverInfo)
+      .set({
+        iconSource: sourceBytes,
+        iconSourceMime: measured.mime,
+        iconSourceSha256: sha,
+        icon64: icon64Bytes,
+        iconUpdatedBy: discordId,
+        iconUpdatedAt: new Date(),
+      })
+      .where(eq(serverInfo.id, 1));
+
+    // The digest, not the image. History is a trail, not a gallery.
+    await db.insert(configHistory).values({
+      key: ICON_HISTORY_KEY,
+      oldValue: before.sha,
+      newValue: sha,
+      changedBy: discordId,
+    });
+
+    revalidatePath("/config");
+    revalidatePath("/");
+    return {
+      ok: true,
+      message:
+        `รับรูป ${measured.width}×${measured.height} แล้ว และย่อเป็น 64×64 เรียบร้อย — ` +
+        `ยังไม่ถึงผู้เล่นจนกว่าจะกด Apply`,
+    };
+  } finally {
+    await sql.end();
+  }
+}
+
+/**
  * Apply: render the Desired Config to disk and restart the Game Server.
  *
  * This is the ONLY path by which a config change reaches players (ADR-0002),
@@ -89,29 +206,45 @@ export async function applyConfig(): Promise<ActionResult> {
 
   const { db, sql } = createDb();
   let rendered: string;
+  let icon64: Buffer | null;
   try {
     rendered = await renderFromDb(db, {
       renderedAt: new Date().toISOString(),
       renderedBy: discordId,
     });
+    const rows = await db
+      .select({ icon64: serverInfo.icon64 })
+      .from(serverInfo)
+      .where(eq(serverInfo.id, 1))
+      .limit(1);
+    icon64 = rows[0]?.icon64 ?? null;
   } finally {
     await sql.end();
   }
 
-  const target = join(PACK_DIR, "server.properties");
   try {
-    // Write to a temp file and rename. A crash midway through a direct write
-    // would leave the server with a truncated server.properties, and it starts
-    // by reading exactly this file.
-    const tmp = `${target}.tmp`;
-    await mkdir(dirname(target), { recursive: true });
-    await writeFile(tmp, rendered, "utf8");
-    await rename(tmp, target);
+    await writeAtomically(join(PACK_DIR, "server.properties"), rendered);
   } catch (err) {
     return {
       ok: false,
       message: `เขียนไฟล์ไม่สำเร็จ: ${err instanceof Error ? err.message : String(err)}`,
     };
+  }
+
+  /*
+    The icon is materialised here, but a failure to write it does NOT fail the
+    Apply. server.properties is already on disk at this point and the restart
+    below is what makes it real; aborting now would leave the config half
+    applied to spare a decoration. So the icon problem is reported and the
+    Apply continues.
+  */
+  let iconNote = "";
+  if (icon64) {
+    try {
+      await writeAtomically(join(PACK_DIR, "server-icon.png"), icon64);
+    } catch (err) {
+      iconNote = ` (เขียนไอคอนไม่สำเร็จ: ${err instanceof Error ? err.message : String(err)})`;
+    }
   }
 
   const baseUrl = process.env.DOCKER_PROXY_URL;
@@ -121,7 +254,8 @@ export async function applyConfig(): Promise<ActionResult> {
       ok: true,
       message:
         "เขียน server.properties แล้ว แต่ยังไม่ได้ตั้งค่าการควบคุมคอนเทนเนอร์ " +
-        "จึงรีสตาร์ทให้ไม่ได้ — ต้องรีสตาร์ทเองเพื่อให้ค่ามีผล",
+        "จึงรีสตาร์ทให้ไม่ได้ — ต้องรีสตาร์ทเองเพื่อให้ค่ามีผล" +
+        iconNote,
     };
   }
 
@@ -141,5 +275,11 @@ export async function applyConfig(): Promise<ActionResult> {
 
   revalidatePath("/config");
   revalidatePath("/");
-  return { ok: true, message: "Apply สำเร็จ — เขียนไฟล์และสั่งรีสตาร์ทเซิร์ฟแล้ว" };
+  return {
+    ok: true,
+    message:
+      (icon64 && !iconNote
+        ? "Apply สำเร็จ — เขียน server.properties กับ server-icon.png และสั่งรีสตาร์ทเซิร์ฟแล้ว"
+        : "Apply สำเร็จ — เขียนไฟล์และสั่งรีสตาร์ทเซิร์ฟแล้ว") + iconNote,
+  };
 }

@@ -7,6 +7,7 @@ import { tierFor } from "@tapestopnight/core/config";
 import { auth } from "@/auth";
 import { ApplyButton } from "@/components/ApplyButton";
 import { ConfigField } from "@/components/ConfigField";
+import { IconUpload } from "@/components/IconUpload";
 
 export const dynamic = "force-dynamic";
 
@@ -26,10 +27,30 @@ export default async function ConfigPage() {
     const [rows, history, infoRows] = await Promise.all([
       db.select().from(configKey).orderBy(configKey.key),
       db.select().from(configHistory).orderBy(desc(configHistory.changedAt)).limit(15),
-      db.select().from(serverInfo).limit(1),
+      // Columns named explicitly so the two icon blobs stay in Postgres. This
+      // page needs to know an icon EXISTS, not to carry it.
+      db
+        .select({
+          serverAddress: serverInfo.serverAddress,
+          iconSha: serverInfo.iconSourceSha256,
+          iconUpdatedBy: serverInfo.iconUpdatedBy,
+          iconUpdatedAt: serverInfo.iconUpdatedAt,
+        })
+        .from(serverInfo)
+        .limit(1),
     ]);
 
-    const confirmPhrase = infoRows[0]?.serverAddress ?? "tapestopnight.com";
+    const info = infoRows[0];
+    const confirmPhrase = info?.serverAddress ?? "tapestopnight.com";
+    const currentIcon = info?.iconSha
+      ? {
+          sha: info.iconSha,
+          updatedBy: info.iconUpdatedBy,
+          updatedAt: info.iconUpdatedAt
+            ? info.iconUpdatedAt.toISOString().slice(0, 16).replace("T", " ")
+            : null,
+        }
+      : null;
 
     // Grouped by tier, editable first. A wall of 40 keys in alphabetical order
     // buries the three an admin actually came to change.
@@ -66,6 +87,23 @@ export default async function ConfigPage() {
           </div>
           <ApplyButton pendingCount={0} />
         </header>
+
+        {/*
+          Above the key list on purpose. The icon is not a server.properties
+          key, so it has nowhere to sit in the tiered groups below, and it is
+          the one thing on this page an admin can get wrong in a way that
+          produces no error anywhere.
+        */}
+        <section style={{ marginBottom: "2rem" }}>
+          <h2 style={{ fontSize: "1.05rem", marginBottom: "0.25rem" }}>ไอคอนเซิร์ฟเวอร์</h2>
+          <p className="faint" style={{ margin: "0 0 0.5rem", fontSize: "0.86rem", maxWidth: "48rem" }}>
+            ไม่ใช่คีย์ใน <code className="mono">server.properties</code> แต่เดินทางไปหาผู้เล่นทาง
+            Apply เหมือนกัน เพราะ Minecraft อ่านไฟล์ไอคอนตอนเซิร์ฟเวอร์เริ่มทำงานเท่านั้น
+          </p>
+          <div className="panel" style={{ padding: "1rem" }}>
+            <IconUpload current={currentIcon} />
+          </div>
+        </section>
 
         {groups.map(({ tier, rows: groupRows }) =>
           groupRows.length === 0 ? null : (

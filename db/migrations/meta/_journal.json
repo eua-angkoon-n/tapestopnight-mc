@@ -8,6 +8,20 @@
       "when": 1788882641243,
       "tag": "0000_concerned_maggott",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1788951843512,
+      "tag": "0001_tiresome_maddog",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1788951856199,
+      "tag": "0002_lucky_black_bolt",
+      "breakpoints": true
     }
   ]
 }

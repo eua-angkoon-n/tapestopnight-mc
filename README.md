@@ -11,7 +11,7 @@ a web app for public server info and admin config, and a Discord bot for operati
 1. **Never hand-edit `server.properties` on the Host.** Postgres is the source of truth; the
    file is generated output. Your edit survives until the next Apply, then vanishes.
    → [ADR-0002](./docs/adr/0002-postgres-source-of-truth.md)
-2. **`-Xmx8G` is deliberate and near the Host's limit.** Java 8's G1 does full GC on a
+2. **`-Xmx7G` is deliberate and near the Host's limit.** Java 8's G1 does full GC on a
    single thread, so pauses scale with heap. The Aikar flags and GC logging are not
    decoration — they are the mitigation. Do not strip them.
    → [ADR-0012](./docs/adr/0012-heap-size-on-measured-host.md)
@@ -57,6 +57,17 @@ docker compose pull && docker compose up -d
 → [ADR-0003](./docs/adr/0003-config-edit-tiers.md),
 [ADR-0007](./docs/adr/0007-design-system.md)
 
+**Change the Server Icon.** Upload ONE high-resolution square image in the admin UI; the
+64×64 PNG Minecraft needs is derived from it, and the original is what the website shows.
+Then press Apply — Minecraft reads the icon file only at process start, so the change needs
+the restart. Do not upload a 64px file: it would look terrible on the site, and an image that
+is not exactly 64×64 is **silently ignored** by Minecraft, with no error anywhere.
+→ [ADR-0013](./docs/adr/0013-server-icon-in-postgres-resized-in-browser.md)
+
+```bash
+npm run icon:check          # exercises the 64x64 validator and the header parsers
+```
+
 **Check for config drift.** An overlay cannot see someone hand-editing a mod config on the
 Host, so this reports mismatches against (verified zip + overlay):
 
@@ -64,7 +75,7 @@ Host, so this reports mismatches against (verified zip + overlay):
 deploy/check-drift.sh
 ```
 
-**Pre-generate the world.** Runs at the normal `8G` with everything else up. Remove the
+**Pre-generate the world.** Runs at the normal `7G` with everything else up. Remove the
 pregen mod afterwards. → ADR-0012
 
 ## Grant someone admin

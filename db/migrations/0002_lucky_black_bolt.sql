@@ -1,0 +1,1 @@
+ALTER TABLE "server_info" DROP COLUMN "icon_source_path";

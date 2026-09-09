@@ -28,6 +28,15 @@ export interface PublicServerInfo {
   readonly serverAddress: string;
   readonly downloadUrl: string | null;
   readonly rulesMarkdown: string | null;
+  /**
+   * Digest of the uploaded Server Icon, or null if there is none.
+   *
+   * Deliberately the digest and not the image. The bytes are served by
+   * /api/icon; pulling a megabyte of bytea into every public page render just
+   * to decide whether to show an <img> would be absurd. It doubles as the
+   * cache-buster on that URL.
+   */
+  readonly iconSha: string | null;
 }
 
 const OFFLINE_FALLBACK: PublicStatus = {
@@ -48,7 +57,21 @@ export async function loadPublicData(): Promise<{
   try {
     const [statusRows, infoRows] = await Promise.all([
       db.select().from(serverStatusCache).limit(1),
-      db.select().from(serverInfo).limit(1),
+      // Columns named explicitly: `select()` would drag both icon blobs out of
+      // Postgres on every page load, and neither is rendered from here.
+      db
+        .select({
+          modpackName: serverInfo.modpackName,
+          modpackVersion: serverInfo.modpackVersion,
+          minecraftVersion: serverInfo.minecraftVersion,
+          forgeVersion: serverInfo.forgeVersion,
+          serverAddress: serverInfo.serverAddress,
+          downloadUrl: serverInfo.downloadUrl,
+          rulesMarkdown: serverInfo.rulesMarkdown,
+          iconSha: serverInfo.iconSourceSha256,
+        })
+        .from(serverInfo)
+        .limit(1),
     ]);
 
     const s = statusRows[0];
@@ -77,6 +100,7 @@ export async function loadPublicData(): Promise<{
             serverAddress: i.serverAddress,
             downloadUrl: i.downloadUrl,
             rulesMarkdown: i.rulesMarkdown,
+            iconSha: i.iconSha,
           }
         : null,
     };

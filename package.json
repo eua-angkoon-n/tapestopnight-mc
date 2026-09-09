@@ -15,7 +15,8 @@
     "db:generate": "drizzle-kit generate --config=db/drizzle.config.ts",
     "db:migrate": "node --experimental-strip-types db/migrate.ts",
     "db:seed": "node --experimental-strip-types db/seed/seed.ts",
-    "render:check": "node --experimental-strip-types db/render-check.ts"
+    "render:check": "node --experimental-strip-types db/render-check.ts",
+    "icon:check": "node --experimental-strip-types packages/core/icon-check.ts"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

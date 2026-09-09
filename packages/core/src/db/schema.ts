@@ -1,5 +1,6 @@
 import {
   boolean,
+  customType,
   integer,
   jsonb,
   pgEnum,
@@ -8,6 +9,13 @@ import {
   text,
   timestamp,
 } from "drizzle-orm/pg-core";
+
+/** Raw bytes. postgres-js hands bytea back as a Buffer and takes one on write. */
+const bytea = customType<{ data: Buffer; driverData: Buffer }>({
+  dataType() {
+    return "bytea";
+  },
+});
 
 /**
  * Edit Tier — ADR-0003.
@@ -84,12 +92,32 @@ export const serverInfo = pgTable("server_info", {
   /** What a player types. The SRV record makes this the bare apex (ADR-0001). */
   serverAddress: text("server_address").notNull(),
   downloadUrl: text("download_url"),
+
   /**
-   * The admin's uploaded source image, high resolution. The exact 64x64 PNG
-   * Minecraft requires is DERIVED from this and is a Rendered Config artifact,
-   * not this column. Minecraft silently ignores any other size.
+   * The Server Icon, held here rather than as files on disk - ADR-0002 applied
+   * to something that is not a properties key.
+   *
+   * `iconSource` is the admin's high-resolution upload: Desired Config, and the
+   * image the public hero renders. `icon64` is the exact 64x64 PNG derived from
+   * it, which Apply materialises to /pack/server-icon.png. That file is
+   * Rendered Config - disposable, owned by nobody, overwritten on every Apply.
+   *
+   * Why not a volume: /srv/mc/pack is vendor payload that check-drift.sh
+   * compares against (verified zip + overlay), so an upload dropped in there
+   * would be reported as drift forever. A new named volume would need its own
+   * backup story; Postgres already has one. These images are hundreds of KB.
+   *
+   * `iconSourceSha256` is the ETag for the public route, and what
+   * config_history records - the trail should say the icon changed, not carry
+   * the icon.
    */
-  iconSourcePath: text("icon_source_path"),
+  iconSource: bytea("icon_source"),
+  iconSourceMime: text("icon_source_mime"),
+  iconSourceSha256: text("icon_source_sha256"),
+  icon64: bytea("icon_64"),
+  iconUpdatedBy: text("icon_updated_by"),
+  iconUpdatedAt: timestamp("icon_updated_at", { withTimezone: true }),
+
   rulesMarkdown: text("rules_markdown"),
   updatedBy: text("updated_by"),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
