@@ -15,13 +15,22 @@ export interface GuildMember {
   readonly avatarHash: string | null;
 }
 
+/**
+ * Fields are assigned in the constructor body rather than declared as
+ * parameter properties. Node runs these sources directly by stripping types,
+ * and a parameter property is not merely a type annotation - it emits an
+ * assignment - so strip-only mode refuses the whole file with
+ * ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX. The web app never noticed because Next
+ * compiles rather than strips, and the poller never imported this module. The
+ * bot does, under plain Node.
+ */
 export class DiscordApiError extends Error {
-  constructor(
-    override readonly message: string,
-    readonly status: number,
-  ) {
+  readonly status: number;
+
+  constructor(message: string, status: number) {
     super(message);
     this.name = "DiscordApiError";
+    this.status = status;
   }
 }
 

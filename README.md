@@ -68,6 +68,31 @@ is not exactly 64×64 is **silently ignored** by Minecraft, with no error anywhe
 npm run icon:check          # exercises the 64x64 validator and the header parsers
 ```
 
+**Run a bot command.** The tree is `/server`, `/players`, `/info` and `/config`.
+`/server status`, `/players list` and `/info *` are open to anyone in an allowed channel;
+the lifecycle and config commands need the Discord admin role. Nothing in the tree can
+touch the **Host** — only the container.
+→ [ADR-0014](./docs/adr/0014-bot-authorisation-surface.md)
+
+```bash
+npm run bot:check           # every command has a decided tier; none can reach the Host
+```
+
+**Let the bot answer in a channel.** The allowlist fails closed: with no rows the bot
+answers nowhere. It is deliberately not editable from the UI, and the bot's refusal
+message prints this statement with the channel id already filled in.
+
+```sql
+INSERT INTO allowed_channel (channel_id, note) VALUES ('<channel id>', 'ห้องหลัก');
+```
+
+**⚠ Before starting the bot for the first time: stop DISCO NIGHT.** Discord permits one
+gateway session per token and this reuses that application's. Two processes on one token
+knock each other offline in a loop — and because web login reads guild roles through this
+same application, that also breaks the website's admin check. The bot clears stale global
+commands on boot so DISCO NIGHT's do not linger.
+→ [ADR-0008](./docs/adr/0008-reuse-discord-application.md)
+
 **Check for config drift.** An overlay cannot see someone hand-editing a mod config on the
 Host, so this reports mismatches against (verified zip + overlay):
 

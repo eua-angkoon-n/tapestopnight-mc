@@ -6,15 +6,12 @@ import { eq } from "drizzle-orm";
 import { configKey, configHistory, createDb, serverInfo } from "@tapestopnight/core/db";
 import {
   IconError,
+  applyDesiredConfig,
   assertIcon64,
   assertSource,
-  renderFromDb,
   sha256Hex,
   tierFor,
 } from "@tapestopnight/core/config";
-import { restart } from "@tapestopnight/core/control";
-import { writeFile, mkdir, rename } from "node:fs/promises";
-import { dirname, join } from "node:path";
 
 import { requireAdmin } from "./admin";
 
@@ -28,19 +25,6 @@ const PACK_DIR = process.env.PACK_DIR ?? "/pack";
  * answer "who changed the icon and when" alongside everything else.
  */
 const ICON_HISTORY_KEY = "server-icon";
-
-/**
- * Write a file the way ADR-0002's Apply must: to a temp path, then rename.
- *
- * A crash midway through a direct write leaves the Game Server with a
- * truncated file, and it reads both of these at process start.
- */
-async function writeAtomically(target: string, data: string | Uint8Array): Promise<void> {
-  const tmp = `${target}.tmp`;
-  await mkdir(dirname(target), { recursive: true });
-  await writeFile(tmp, data);
-  await rename(tmp, target);
-}
 
 export interface ActionResult {
   readonly ok: boolean;
@@ -204,52 +188,38 @@ export async function uploadServerIcon(form: FormData): Promise<ActionResult> {
 export async function applyConfig(): Promise<ActionResult> {
   const { discordId } = await requireAdmin();
 
+  const baseUrl = process.env.DOCKER_PROXY_URL;
+  const container = process.env.MC_CONTAINER_NAME;
+
   const { db, sql } = createDb();
-  let rendered: string;
-  let icon64: Buffer | null;
+  let outcome;
   try {
-    rendered = await renderFromDb(db, {
-      renderedAt: new Date().toISOString(),
+    // The mechanics live in core because the Discord bot performs the same
+    // operation (ADR-0006). What stays here is authorisation, the Thai
+    // wording, and cache revalidation - the parts that are the web app's.
+    outcome = await applyDesiredConfig(db, {
+      packDir: PACK_DIR,
       renderedBy: discordId,
+      docker: baseUrl && container ? { baseUrl, container } : null,
     });
-    const rows = await db
-      .select({ icon64: serverInfo.icon64 })
-      .from(serverInfo)
-      .where(eq(serverInfo.id, 1))
-      .limit(1);
-    icon64 = rows[0]?.icon64 ?? null;
   } finally {
     await sql.end();
   }
 
-  try {
-    await writeAtomically(join(PACK_DIR, "server.properties"), rendered);
-  } catch (err) {
+  const iconNote = outcome.iconError ? ` (เขียนไอคอนไม่สำเร็จ: ${outcome.iconError})` : "";
+
+  if (!outcome.ok) {
     return {
       ok: false,
-      message: `เขียนไฟล์ไม่สำเร็จ: ${err instanceof Error ? err.message : String(err)}`,
+      message:
+        outcome.failedAt === "properties"
+          ? `เขียนไฟล์ไม่สำเร็จ: ${outcome.error}`
+          : `เขียนไฟล์แล้วแต่รีสตาร์ทไม่สำเร็จ: ${outcome.error} — ` +
+            `ค่าใหม่จะมีผลเมื่อเซิร์ฟรีสตาร์ทครั้งถัดไป${iconNote}`,
     };
   }
 
-  /*
-    The icon is materialised here, but a failure to write it does NOT fail the
-    Apply. server.properties is already on disk at this point and the restart
-    below is what makes it real; aborting now would leave the config half
-    applied to spare a decoration. So the icon problem is reported and the
-    Apply continues.
-  */
-  let iconNote = "";
-  if (icon64) {
-    try {
-      await writeAtomically(join(PACK_DIR, "server-icon.png"), icon64);
-    } catch (err) {
-      iconNote = ` (เขียนไอคอนไม่สำเร็จ: ${err instanceof Error ? err.message : String(err)})`;
-    }
-  }
-
-  const baseUrl = process.env.DOCKER_PROXY_URL;
-  const container = process.env.MC_CONTAINER_NAME;
-  if (!baseUrl || !container) {
+  if (!outcome.restarted) {
     return {
       ok: true,
       message:
@@ -259,26 +229,12 @@ export async function applyConfig(): Promise<ActionResult> {
     };
   }
 
-  try {
-    // 600 s, matching stop_grace_period. A large OTG world genuinely takes
-    // minutes to save and cutting that short is how worlds corrupt.
-    await restart({ baseUrl, container }, 600);
-  } catch (err) {
-    return {
-      ok: false,
-      message:
-        `เขียนไฟล์แล้วแต่รีสตาร์ทไม่สำเร็จ: ` +
-        `${err instanceof Error ? err.message : String(err)} — ` +
-        `ค่าใหม่จะมีผลเมื่อเซิร์ฟรีสตาร์ทครั้งถัดไป`,
-    };
-  }
-
   revalidatePath("/config");
   revalidatePath("/");
   return {
     ok: true,
     message:
-      (icon64 && !iconNote
+      (outcome.wroteIcon
         ? "Apply สำเร็จ — เขียน server.properties กับ server-icon.png และสั่งรีสตาร์ทเซิร์ฟแล้ว"
         : "Apply สำเร็จ — เขียนไฟล์และสั่งรีสตาร์ทเซิร์ฟแล้ว") + iconNote,
   };

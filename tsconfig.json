@@ -4,6 +4,6 @@
   // tsconfig (Bundler resolution, JSX, the @/* alias); typechecking it with
   // these Node settings produces errors that say nothing about the code.
   // `npm run typecheck` runs both projects.
-  "include": ["packages/**/*.ts", "apps/poller/**/*.ts", "db/**/*.ts"],
+  "include": ["packages/**/*.ts", "apps/poller/**/*.ts", "apps/bot/**/*.ts", "db/**/*.ts"],
   "exclude": ["node_modules", "**/dist", "**/.next", "apps/web"]
 }

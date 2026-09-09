@@ -1,0 +1,24 @@
+# The Discord bot — Phase 6.
+#
+# Same shape as Dockerfile.poller: Node runs the TypeScript directly by
+# stripping types, so nothing is compiled here. That is also why every import
+# in these sources carries an explicit .ts extension, and why core must avoid
+# TypeScript syntax that emits code — a constructor parameter property makes
+# strip-only mode reject the whole file.
+FROM node:24-alpine AS deps
+WORKDIR /repo
+# Only the manifests, so this layer caches until dependencies actually change.
+COPY package.json package-lock.json ./
+COPY packages/core/package.json packages/core/
+COPY apps/bot/package.json apps/bot/
+RUN npm ci --omit=dev --no-audit --no-fund --ignore-scripts
+
+FROM node:24-alpine AS runtime
+WORKDIR /repo
+ENV NODE_ENV=production
+COPY --from=deps /repo/node_modules ./node_modules
+COPY package.json ./
+COPY packages/core ./packages/core
+COPY apps/bot ./apps/bot
+USER node
+CMD ["node", "apps/bot/src/main.ts"]

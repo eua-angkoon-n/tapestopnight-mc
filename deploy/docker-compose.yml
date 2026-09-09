@@ -287,6 +287,71 @@ services:
     networks:
       - mc
 
+  # ── Phase 6: the Discord bot ──────────────────────────────────────
+  bot:
+    image: ${BOT_IMAGE:-ghcr.io/eua-angkoon-n/mc-bot:latest}
+    container_name: tapestopnight-bot
+    restart: unless-stopped
+
+    # No published ports. The bot dials OUT to Discord's gateway; nothing on
+    # the internet ever needs to reach it.
+
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL must be set in deploy/.env}
+
+      # ⚠ ADR-0008. This token is DISCO NIGHT's. Discord permits exactly one
+      # gateway session per token, so DISCO NIGHT must be STOPPED before this
+      # container starts — two processes on one token knock each other offline
+      # in a loop, and because the web app's admin check reads guild roles
+      # through this same application, an unstable gateway breaks web login
+      # too. Rotate the token after cutover.
+      DISCORD_BOT_TOKEN: ${DISCORD_BOT_TOKEN:?DISCORD_BOT_TOKEN must be set in deploy/.env}
+      DISCORD_CLIENT_ID: ${DISCORD_CLIENT_ID:?DISCORD_CLIENT_ID must be set in deploy/.env}
+      DISCORD_GUILD_ID: ${DISCORD_GUILD_ID:?DISCORD_GUILD_ID must be set in deploy/.env}
+      # Required, not optional. ADR-0004 makes this role the authority for both
+      # surfaces; without it every admin command would fall through to the
+      # break-glass table, which is not a configuration to run on.
+      DISCORD_ADMIN_ROLE_ID: ${DISCORD_ADMIN_ROLE_ID:?DISCORD_ADMIN_ROLE_ID must be set in deploy/.env}
+
+      # /players list is the one command that reaches the Game Server, over
+      # RCON, because Server List Ping returns only a shuffled sample of names.
+      RCON_HOST: mc
+      RCON_PORT: "25575"
+      RCON_PASSWORD: ${RCON_PASSWORD:?RCON_PASSWORD must be set in deploy/.env}
+
+      DOCKER_PROXY_URL: http://socket-proxy:2375
+      MC_CONTAINER_NAME: tapestopnight-mc
+      MC_SLP_HOST: mc
+      MC_SLP_PORT: "25565"
+
+      PACK_DIR: /pack
+      PUBLIC_BASE_URL: ${AUTH_URL:-https://tapestopnight.com}
+      RESTART_COUNTDOWN_SECONDS: "30"
+      TZ: Asia/Bangkok
+
+    volumes:
+      # ⚠ The same known privilege the web container carries, for the same
+      # reason: /config apply renders server.properties and server-icon.png
+      # where the Game Server reads them, and an atomic write needs rename(),
+      # which needs the containing directory. Read-write therefore also means
+      # this container could write into mods/. Weighed against the fact that
+      # an admin can already change config and restart the server, this widens
+      # an existing capability rather than creating a new class of one.
+      - /srv/mc/pack:/pack
+
+    depends_on:
+      db:
+        condition: service_healthy
+      socket-proxy:
+        condition: service_started
+
+    # Node plus discord.js, holding one websocket. Measured against the
+    # poller's 128m, which does less; 192m leaves room for an icon attachment
+    # without inviting the OOM killer near a 7 GB JVM (ADR-0012).
+    mem_limit: 192m
+    networks:
+      - mc
+
 networks:
   mc:
     name: tapestopnight-mc

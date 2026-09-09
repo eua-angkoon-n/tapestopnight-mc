@@ -16,7 +16,8 @@
     "db:migrate": "node --experimental-strip-types db/migrate.ts",
     "db:seed": "node --experimental-strip-types db/seed/seed.ts",
     "render:check": "node --experimental-strip-types db/render-check.ts",
-    "icon:check": "node --experimental-strip-types packages/core/icon-check.ts"
+    "icon:check": "node --experimental-strip-types packages/core/icon-check.ts",
+    "bot:check": "node --experimental-strip-types apps/bot/tree-check.ts"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
