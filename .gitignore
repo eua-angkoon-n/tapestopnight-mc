@@ -49,3 +49,8 @@ dist/
 .turbo/
 *.tsbuildinfo
 .pnpm-store/
+
+# Site media (ADR-0009): the hero video and stills live on the Host at
+# /srv/mc/media and are bind-mounted in. A 30 MB mp4 in git would make every
+# clone carry every re-encode for ever.
+apps/web/public/media/

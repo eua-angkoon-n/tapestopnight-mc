@@ -205,3 +205,193 @@ kbd,
     animation-duration: 0.01ms !important;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   Landing page layout — the Velorah structure, this project's tokens.
+   Layout only: no new colours, no new fonts (ADR-0007 stays as it is).
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* Anchor navigation. Guarded, because a moving viewport is exactly what
+   prefers-reduced-motion is asking us not to do. */
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+/* The nav is sticky and would otherwise cover the top of whatever an anchor
+   jumps to. Without this, clicking "Wiki" lands on the section's heading
+   hidden behind the bar. */
+[id] {
+  scroll-margin-top: 5rem;
+}
+
+.site-nav {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  border-bottom: 1px solid var(--border);
+  /* Translucent over the hero video, opaque-ish once scrolled past it. The
+     fallback matters: backdrop-filter is unsupported in some browsers and
+     without a solid-enough background the nav text lands on raw video. */
+  background: rgba(14, 12, 11, 0.82);
+}
+@supports (backdrop-filter: blur(10px)) {
+  .site-nav {
+    background: rgba(14, 12, 11, 0.55);
+    backdrop-filter: blur(12px) saturate(120%);
+  }
+}
+
+.nav-link {
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 0.92rem;
+  white-space: nowrap;
+  transition: color 120ms ease;
+}
+.nav-link:hover {
+  color: var(--text);
+}
+
+/* Full-height section. svh, not vh: on mobile browsers vh includes the
+   retracting address bar, so a 100vh hero is taller than the screen and the
+   content sits partly below the fold on first paint. */
+.section-tall {
+  position: relative;
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  overflow: hidden;
+}
+
+/* Full-bleed background media. */
+.media-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 0;
+}
+
+/*
+  Two scrims, doing different jobs.
+
+  The gradient reproduces the template's bottom fade so the section hands off
+  into the page instead of ending on a hard cut. The flat wash is a
+  legibility floor: Dregora footage is bright in places, and body text over
+  unmodified video fails contrast wherever the frame happens to be light.
+*/
+.scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background:
+    linear-gradient(to top, var(--bg) 0%, rgba(14, 12, 11, 0.55) 28%, transparent 62%),
+    rgba(14, 12, 11, 0.42);
+}
+
+.section-content {
+  position: relative;
+  z-index: 2;
+}
+
+/* The template's section-2 grid: text card and image side by side, stacking
+   on narrow screens. */
+.card-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: 1fr;
+  align-items: stretch;
+}
+@media (min-width: 56rem) {
+  .card-grid {
+    grid-template-columns: 1fr 1fr;
+    min-height: 32.5rem;
+  }
+}
+
+.card-lg {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 2rem;
+  padding: 2.5rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+@media (min-width: 56rem) {
+  .card-lg {
+    padding: 3.5rem;
+  }
+}
+
+/* The small ringed dot the template opens its cards with. */
+.card-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  color: var(--accent);
+  flex: none;
+}
+
+/* Rounded frame for embedded third-party content. overflow:hidden is what
+   keeps the iframe's square corners inside the rounded border. */
+.frame-panel {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: var(--surface);
+  line-height: 0;
+}
+.frame-panel iframe {
+  display: block;
+  width: 100%;
+  border: 0;
+}
+
+/* Wide media inside a card must never push the page sideways. */
+.card-media {
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  object-fit: cover;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+}
+
+/*
+  Reduced motion: a still frame instead of a loop.
+
+  The poster layer sits BEHIND the video rather than relying on the video's
+  own poster attribute, because hiding the <video> element would hide its
+  poster with it. Both reference the same file, so this costs no extra
+  request — and CSS alone cannot pause a video, which is why the video is
+  removed rather than stopped.
+
+  An autoplaying full-screen background is precisely the kind of motion this
+  media query exists to suppress, so it is a correctness fix, not a nicety.
+*/
+.media-poster {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background-image: url("/media/dregora-poster.jpg");
+  background-size: cover;
+  background-position: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .media-bg {
+    display: none;
+  }
+}

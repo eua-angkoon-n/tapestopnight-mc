@@ -3,21 +3,38 @@ import { auth, signIn, signOut } from "@/auth";
 /**
  * Site header — requirements 2.1 and 2.2.
  *
+ * Three-part bar: name on the left, section links in the middle, the account
+ * control on the right. Sticky and translucent so it sits over the hero video
+ * rather than cutting a solid band across it.
+ *
+ * Still a SERVER component. It calls auth() and renders sign-in/sign-out as
+ * server actions, so the landing page gains a navigation bar without gaining a
+ * client bundle (ADR-0006).
+ *
  * The config link is shown only to admins, but that is tidiness, not security:
  * /config answers a real 403 server-side whether or not the link is rendered
  * (ADR-0004). Hiding a control is never what stops someone using it.
  */
+
+/**
+ * Absolute, not bare fragments.
+ *
+ * `#wiki` from /config would look for an element on the config page and do
+ * nothing. `/#wiki` navigates home first and then scrolls, so the bar behaves
+ * the same on every page.
+ */
+const SECTIONS = [
+  { href: "/#home", label: "หน้าแรก" },
+  { href: "/#wiki", label: "Wiki" },
+  { href: "/#about", label: "เกี่ยวกับ" },
+] as const;
+
 export async function SiteHeader() {
   const session = await auth();
   const configured = Boolean(process.env.AUTH_DISCORD_ID);
 
   return (
-    <header
-      style={{
-        borderBottom: "1px solid var(--border)",
-        background: "var(--bg)",
-      }}
-    >
+    <header className="site-nav">
       <div
         className="wrap"
         style={{
@@ -31,21 +48,48 @@ export async function SiteHeader() {
         <a
           href="/"
           className="display"
-          style={{ color: "var(--text)", textDecoration: "none", fontWeight: 600 }}
+          style={{
+            color: "var(--text)",
+            textDecoration: "none",
+            fontWeight: 600,
+            fontSize: "1.05rem",
+            flex: "none",
+          }}
         >
           tapestopnight
         </a>
 
-        <nav style={{ display: "flex", alignItems: "center", gap: "0.75rem", fontSize: "0.92rem" }}>
+        {/*
+          Wraps instead of scrolling horizontally on narrow screens. A nav that
+          scrolls sideways hides its own last item, and "ตั้งค่าเซิร์ฟเวอร์" is
+          the longest label here.
+        */}
+        <nav
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "1.4rem",
+            flexWrap: "wrap",
+            flex: 1,
+          }}
+        >
+          {SECTIONS.map((s) => (
+            <a key={s.href} href={s.href} className="nav-link">
+              {s.label}
+            </a>
+          ))}
           {session?.isAdmin ? (
-            <a href="/config" className="btn" style={{ padding: "0.45rem 0.85rem" }}>
+            <a href="/config" className="nav-link" style={{ color: "var(--accent)" }}>
               ตั้งค่าเซิร์ฟเวอร์
             </a>
           ) : null}
+        </nav>
 
+        <div style={{ display: "flex", alignItems: "center", gap: "0.65rem", flex: "none" }}>
           {session ? (
             <>
-              <span className="muted">
+              <span className="muted" style={{ fontSize: "0.88rem" }}>
                 {session.user?.name ?? "ล็อกอินแล้ว"}
                 {/*
                   Three states, not two. Saying "not an admin" when Discord
@@ -80,8 +124,12 @@ export async function SiteHeader() {
                 await signIn("discord", { redirectTo: "/config" });
               }}
             >
-              <button type="submit" className="btn" style={{ padding: "0.45rem 0.85rem" }}>
-                เข้าสู่ระบบด้วย Discord
+              <button
+                type="submit"
+                className="btn btn-primary"
+                style={{ padding: "0.45rem 0.95rem" }}
+              >
+                เข้าสู่ระบบ
               </button>
             </form>
           ) : (
@@ -92,7 +140,7 @@ export async function SiteHeader() {
               ยังไม่ได้เปิดระบบล็อกอิน
             </span>
           )}
-        </nav>
+        </div>
       </div>
     </header>
   );

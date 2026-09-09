@@ -94,6 +94,20 @@ export const serverInfo = pgTable("server_info", {
   downloadUrl: text("download_url"),
 
   /**
+   * Where the public pages send players next.
+   *
+   * Here rather than hardcoded in the page, for the same reason the modpack
+   * version is: the bot answers `/info` from this row too, so a literal in the
+   * JSX would be a second copy that nobody remembers to update. A Discord
+   * invite in particular expires or gets rotated.
+   *
+   * Both are nullable and the page degrades to an honest "not set yet" note
+   * rather than a dead button, exactly as `downloadUrl` already does.
+   */
+  discordUrl: text("discord_url"),
+  wikiUrl: text("wiki_url"),
+
+  /**
    * The Server Icon, held here rather than as files on disk - ADR-0002 applied
    * to something that is not a properties key.
    *

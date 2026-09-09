@@ -277,6 +277,16 @@ services:
       # shape as the socket-proxy gap noted above, and the same answer.
       - /srv/mc/pack:/pack
 
+      # Site media — the hero video, its poster, the about image.
+      #
+      # Mounted rather than baked in, for ADR-0009's reason: git cannot
+      # delta-compress a video, so every re-encode would add its full size to
+      # the history permanently, and every image pull would carry it. The
+      # standalone build serves apps/web/public from disk at runtime, so a
+      # bind mount lands exactly where Next looks. Read-only: the web app has
+      # no business writing here.
+      - /srv/mc/media:/app/apps/web/public/media:ro
+
     depends_on:
       db:
         condition: service_healthy

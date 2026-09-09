@@ -27,6 +27,10 @@ export interface PublicServerInfo {
   readonly forgeVersion: string;
   readonly serverAddress: string;
   readonly downloadUrl: string | null;
+  /** Where the hero's Discord button goes. Null renders an honest note, not a dead button. */
+  readonly discordUrl: string | null;
+  /** The wiki the second section embeds, and links to as a fallback. */
+  readonly wikiUrl: string | null;
   readonly rulesMarkdown: string | null;
   /**
    * Digest of the uploaded Server Icon, or null if there is none.
@@ -67,6 +71,8 @@ export async function loadPublicData(): Promise<{
           forgeVersion: serverInfo.forgeVersion,
           serverAddress: serverInfo.serverAddress,
           downloadUrl: serverInfo.downloadUrl,
+          discordUrl: serverInfo.discordUrl,
+          wikiUrl: serverInfo.wikiUrl,
           rulesMarkdown: serverInfo.rulesMarkdown,
           iconSha: serverInfo.iconSourceSha256,
         })
@@ -99,6 +105,8 @@ export async function loadPublicData(): Promise<{
             forgeVersion: i.forgeVersion,
             serverAddress: i.serverAddress,
             downloadUrl: i.downloadUrl,
+            discordUrl: i.discordUrl,
+            wikiUrl: i.wikiUrl,
             rulesMarkdown: i.rulesMarkdown,
             iconSha: i.iconSha,
           }
