@@ -305,13 +305,21 @@ services:
       # in a loop, and because the web app's admin check reads guild roles
       # through this same application, an unstable gateway breaks web login
       # too. Rotate the token after cutover.
-      DISCORD_BOT_TOKEN: ${DISCORD_BOT_TOKEN:?DISCORD_BOT_TOKEN must be set in deploy/.env}
-      DISCORD_CLIENT_ID: ${DISCORD_CLIENT_ID:?DISCORD_CLIENT_ID must be set in deploy/.env}
-      DISCORD_GUILD_ID: ${DISCORD_GUILD_ID:?DISCORD_GUILD_ID must be set in deploy/.env}
-      # Required, not optional. ADR-0004 makes this role the authority for both
-      # surfaces; without it every admin command would fall through to the
-      # break-glass table, which is not a configuration to run on.
-      DISCORD_ADMIN_ROLE_ID: ${DISCORD_ADMIN_ROLE_ID:?DISCORD_ADMIN_ROLE_ID must be set in deploy/.env}
+      #
+      # `:-` rather than `:?` on purpose, and it is not laxity. A required-
+      # variable failure aborts the WHOLE `docker compose` invocation, not just
+      # this service — so an unset bot token would also block
+      # `docker compose up -d web`, taking the website down to protect a
+      # service that is not running yet. The bot validates all four itself at
+      # boot and exits naming the missing one, which is a better message than
+      # compose's and costs the rest of the stack nothing.
+      DISCORD_BOT_TOKEN: ${DISCORD_BOT_TOKEN:-}
+      DISCORD_CLIENT_ID: ${DISCORD_CLIENT_ID:-}
+      DISCORD_GUILD_ID: ${DISCORD_GUILD_ID:-}
+      # ADR-0004 makes this role the authority for both surfaces. Without it
+      # every admin command would fall through to the break-glass table, so the
+      # bot treats it as required and refuses to start.
+      DISCORD_ADMIN_ROLE_ID: ${DISCORD_ADMIN_ROLE_ID:-}
 
       # /players list is the one command that reaches the Game Server, over
       # RCON, because Server List Ping returns only a shuffled sample of names.
