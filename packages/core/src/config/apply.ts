@@ -113,9 +113,19 @@ export async function applyDesiredConfig(
       wroteIcon: false,
       restarted: false,
       iconError: null,
+      /*
+        Name BOTH places, because the first version of this message named only
+        deploy/.env and that is usually the wrong one. The value was present
+        there all along; what was missing was passing it through to this
+        container. Sending someone to re-check a file that is already correct
+        is the same failure the auth check made — a refusal that blames the
+        wrong thing costs more than no message.
+      */
       error:
-        "enable-rcon is true but no rcon.password was supplied — Minecraft would " +
-        "silently start with RCON disabled. Set RCON_PASSWORD in deploy/.env.",
+        "enable-rcon is true but no rcon.password reached the renderer — Minecraft " +
+        "would silently start with RCON disabled. Check BOTH: that RCON_PASSWORD is " +
+        "set in deploy/.env, AND that this service declares it under `environment:` " +
+        "in deploy/docker-compose.yml. It being in .env is not enough on its own.",
     };
   }
 

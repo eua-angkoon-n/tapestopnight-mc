@@ -259,6 +259,18 @@ services:
       DOCKER_PROXY_URL: http://socket-proxy:2375
       MC_CONTAINER_NAME: tapestopnight-mc
       PACK_DIR: /pack
+
+      # Needed by Apply, not by anything the web app does on its own.
+      #
+      # rcon.password is NOT a config_key row: locked keys are displayed with
+      # their values on /config (ADR-0003), so storing it would print the
+      # password to every admin. The renderer injects it from here instead
+      # (SECRET_KEYS), which means the web container needs it even though it
+      # never opens an RCON connection.
+      #
+      # Its absence is why Apply refused from the web UI while the bot's
+      # /config apply worked: only the bot had it.
+      RCON_PASSWORD: ${RCON_PASSWORD:?RCON_PASSWORD must be set in deploy/.env}
       TZ: Asia/Bangkok
 
     volumes:
