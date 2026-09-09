@@ -121,8 +121,37 @@ archive is consistent rather than hopeful, and saving is re-enabled by a trap ev
 archive fails. A world left with saving disabled silently discards everything until the next
 restart, which is worse than a failed backup.
 
-**Pre-generate the world.** Runs at the normal `7G` with everything else up. Remove the
-pregen mod afterwards. → ADR-0012
+**Pre-generate the world.** Runs at the normal `7G` with everything else up, using
+Chunk Pregenerator `V1.12-2.5.1` (the version the pack's own readme names). The mod is
+temporary: install, generate, remove.
+
+```bash
+cp /srv/mc/dist/chunkpregen-2.5.1.jar /srv/mc/pack/mods/   # then restart the container
+docker exec tapestopnight-mc rcon-cli "pregen gen startradius square s s b5000"
+docker exec tapestopnight-mc rcon-cli "pregen info ShowTaskList"    # progress
+docker exec tapestopnight-mc rcon-cli "pregen info stop"            # pause; resume with 'continue'
+```
+
+The task list survives a restart, so a stopped or crashed run resumes with
+`pregen info continue` rather than starting over.
+
+Two things the pack already gets right, worth knowing before you go looking for them:
+`fermiummixins` force-disables **OpenTerrainGenerator's own** pregenerator (not this mod)
+because it burns CPU when idle, and it enables a "Save To Disk Crash Improvement" guard
+specifically for pregeneration.
+
+`deploy/backup.sh world` refuses to run while a pregen task is active, on purpose:
+`save-off` does not pause the generator, it just queues generated chunks in the heap next
+to a JVM already near its cgroup limit. The Postgres half still runs.
+
+Afterwards: remove the jar, restart, and set the worldborder the pack's readme demands —
+that number concerns the border, not the pregen radius, so a 5,000-block pregen does not
+break the in-world teleporters.
+
+```bash
+docker exec tapestopnight-mc rcon-cli "worldborder set 40000"
+```
+→ ADR-0012
 
 ## Grant someone admin
 

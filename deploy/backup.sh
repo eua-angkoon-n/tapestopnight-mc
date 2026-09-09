@@ -71,6 +71,23 @@ backup_world() {
   local running=0
   docker inspect -f '{{.State.Running}}' "${MC_CONTAINER}" 2>/dev/null | grep -q true && running=1
 
+  # ── Do not do this in the middle of a pre-generation ──────────────
+  #
+  # save-off during pregen does not pause the generator; it only stops the
+  # chunks it produces from reaching disk, so they queue in the heap instead.
+  # Pregen already runs the JVM near its cgroup limit (ADR-0012), and the OOM
+  # killer picks the largest process, which is the game server. Trading a
+  # night's backup for an OOM kill mid-generation is the wrong way round —
+  # especially as the world before pregen is already archived, and pregenerated
+  # terrain is reproducible by re-running the pregen.
+  if [ "${running}" = "1" ] && docker exec "${MC_CONTAINER}" rcon-cli "pregen info ShowTaskList" 2>/dev/null | grep -qiE "[1-9][0-9]* Tasks"; then
+    log "SKIPPING the world backup: a pre-generation is running."
+    log "  save-off would queue generated chunks in the heap next to a JVM"
+    log "  already near its limit. The Postgres backup still ran."
+    log "  Run 'deploy/backup.sh world' once pregen finishes."
+    return 0
+  fi
+
   if [ "${running}" = "1" ]; then
     log "pausing saves and flushing"
     trap saves_on EXIT

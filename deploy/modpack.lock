@@ -13,7 +13,19 @@ MODPACK_FILE="RLCraft Dregora v1.1.2b - server pack.zip"
 MODPACK_SIZE_BYTES=676115507
 MODPACK_SHA256="548a32645f6bf104f4f2eeea3409ba3baf162dd428f113647f16990ec270ac5a"
 
-# Where fetch-modpack.sh downloads from. Set this once storage is chosen.
+# Where fetch-modpack.sh downloads from.
+#
+# DELIBERATELY EMPTY — decided 2026-09-09. The zip is kept on the Host at
+# /srv/mc/dist/ and on the maintainer's own machine, and that is judged
+# enough for a two-person game server. fetch-modpack.sh already handles this
+# correctly: it uses a local archive when one is present, and dies with a
+# clear message rather than pretending, when one is not.
+#
+# The cost, stated so nobody is surprised by it: a clean-box rebuild needs
+# someone to bring the zip along. The SHA256 below still does its real job —
+# proving the bytes are the right ones — but it cannot fetch them. If the
+# Host is ever lost with no local copy to hand, this exact build is gone and
+# the pack would have to be re-downloaded from CurseForge and re-pinned.
 MODPACK_URL=""
 
 # Runtime the pack requires (see docs/adr and the pack's SERVER README OR DIE.txt)
