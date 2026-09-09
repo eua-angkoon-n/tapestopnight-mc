@@ -1,5 +1,3 @@
-import { createHash } from "node:crypto";
-
 /**
  * Server Icon validation.
  *
@@ -255,8 +253,4 @@ export function assertIcon64(bytes: Uint8Array): void {
         `Minecraft เมินไฟล์ขนาดอื่นแบบเงียบ ๆ ระบบจึงไม่ยอมเขียนลงดิสก์`,
     );
   }
-}
-
-export function sha256Hex(bytes: Uint8Array): string {
-  return createHash("sha256").update(bytes).digest("hex");
 }

@@ -3,6 +3,13 @@
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
+// Imported from the subpath, not the barrel: the barrel re-exports the
+// renderer and Apply, which reach for node:fs and would not survive being
+// pulled into a browser bundle. Sharing the constant is the point — a limit
+// the client enforces and the server enforces separately is a limit that will
+// eventually disagree with itself.
+import { MAX_SOURCE_BYTES } from "@tapestopnight/core/config/icon";
+
 import { uploadServerIcon } from "@/lib/config-actions";
 
 /**
@@ -31,7 +38,6 @@ export interface CurrentIcon {
 }
 
 const ACCEPT = "image/png,image/jpeg,image/webp";
-const MAX_SOURCE_BYTES = 2 * 1024 * 1024;
 
 interface Picked {
   readonly file: File;
@@ -121,13 +127,31 @@ export function IconUpload({ current }: { current: CurrentIcon | null }) {
     form.set("icon64", picked.icon64, "server-icon.png");
 
     startTransition(async () => {
-      const r = await uploadServerIcon(form);
-      setResult(r);
-      if (r.ok) {
-        reset();
-        // The page reads the icon back through /api/icon, keyed by digest, so
-        // the fresh render is what shows the new image.
-        router.refresh();
+      try {
+        const r = await uploadServerIcon(form);
+        setResult(r);
+        if (r.ok) {
+          reset();
+          // The page reads the icon back through /api/icon, keyed by digest, so
+          // the fresh render is what shows the new image.
+          router.refresh();
+        }
+      } catch (err) {
+        /*
+          Not decoration. Some failures never reach the action at all — the
+          framework rejects an oversized Server Action body with a 413 before
+          our code runs — and without this the promise simply rejected, the
+          button stayed on "กำลังอัปโหลด…", and the admin saw an upload that
+          did nothing and said nothing. An error with no message is
+          indistinguishable from being ignored.
+        */
+        setResult({
+          ok: false,
+          message:
+            "อัปโหลดไม่สำเร็จ — เซิร์ฟเวอร์ปฏิเสธคำขอ " +
+            "ถ้าไฟล์ใหญ่ใกล้ 2 MB ให้ลองย่อรูปลงก่อน " +
+            `(${err instanceof Error ? err.message : String(err)})`,
+        });
       }
     });
   }

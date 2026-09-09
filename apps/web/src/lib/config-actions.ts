@@ -201,6 +201,9 @@ export async function applyConfig(): Promise<ActionResult> {
       packDir: PACK_DIR,
       renderedBy: discordId,
       docker: baseUrl && container ? { baseUrl, container } : null,
+      // Never stored in Postgres: a locked key's value is shown on this very
+      // page, and this one is a password. See SECRET_KEYS in core.
+      secrets: { "rcon.password": process.env.RCON_PASSWORD ?? "" },
     });
   } finally {
     await sql.end();
@@ -212,7 +215,9 @@ export async function applyConfig(): Promise<ActionResult> {
     return {
       ok: false,
       message:
-        outcome.failedAt === "properties"
+        outcome.failedAt === "precondition"
+          ? `Apply ถูกยกเลิกก่อนเขียนไฟล์: ${outcome.error}`
+          : outcome.failedAt === "properties"
           ? `เขียนไฟล์ไม่สำเร็จ: ${outcome.error}`
           : `เขียนไฟล์แล้วแต่รีสตาร์ทไม่สำเร็จ: ${outcome.error} — ` +
             `ค่าใหม่จะมีผลเมื่อเซิร์ฟรีสตาร์ทครั้งถัดไป${iconNote}`,

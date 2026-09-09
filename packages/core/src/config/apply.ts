@@ -5,7 +5,7 @@ import { eq } from "drizzle-orm";
 
 import { serverInfo, type Database } from "../db/index.ts";
 import { restart, type DockerOptions } from "../control/docker.ts";
-import { renderFromDb } from "./render.ts";
+import { parseProperties, renderFromDb } from "./render.ts";
 
 /**
  * Apply - the only path by which a config change reaches players (ADR-0002).
@@ -36,6 +36,14 @@ export interface ApplyOptions {
    * save, and cutting that short is how worlds corrupt.
    */
   readonly restartTimeoutSeconds?: number;
+  /**
+   * Values injected into the rendered file that are NOT stored in Postgres.
+   *
+   * Currently just `rcon.password`. ADR-0003 displays locked keys with their
+   * values on the admin page, so a stored RCON password would be printed to
+   * every admin; it comes from the environment instead. See SECRET_KEYS.
+   */
+  readonly secrets?: Readonly<Record<string, string>>;
 }
 
 export interface ApplyOutcome {
@@ -46,7 +54,7 @@ export interface ApplyOutcome {
    * "the icon write failed" and "there is no icon", and those need different
    * sentences.
    */
-  readonly failedAt: "properties" | "restart" | null;
+  readonly failedAt: "precondition" | "properties" | "restart" | null;
   readonly wroteProperties: boolean;
   readonly wroteIcon: boolean;
   readonly restarted: boolean;
@@ -78,10 +86,38 @@ export async function applyDesiredConfig(
   db: Database,
   opts: ApplyOptions,
 ): Promise<ApplyOutcome> {
-  const rendered = await renderFromDb(db, {
-    renderedAt: new Date().toISOString(),
-    renderedBy: opts.renderedBy,
-  });
+  const secrets = opts.secrets ?? {};
+  const rendered = await renderFromDb(
+    db,
+    { renderedAt: new Date().toISOString(), renderedBy: opts.renderedBy },
+    secrets,
+  );
+
+  /*
+    Refuse to write a file that would turn RCON off by omission.
+
+    Minecraft ignores enable-rcon=true when rcon.password is empty. It starts
+    fine, plays fine, and RCON is simply absent — no error, no log line worth
+    noticing. That is precisely how this went unnoticed for five phases: the
+    bot's /players list and the in-game restart countdown both need RCON, and
+    both would fail in ways that read as "the server is busy".
+
+    Failing here is loud and costs nothing: nothing has been written yet.
+  */
+  const wantsRcon = parseProperties(rendered).get("enable-rcon") === "true";
+  if (wantsRcon && !secrets["rcon.password"]) {
+    return {
+      ok: false,
+      failedAt: "precondition",
+      wroteProperties: false,
+      wroteIcon: false,
+      restarted: false,
+      iconError: null,
+      error:
+        "enable-rcon is true but no rcon.password was supplied — Minecraft would " +
+        "silently start with RCON disabled. Set RCON_PASSWORD in deploy/.env.",
+    };
+  }
 
   const iconRows = await db
     .select({ icon64: serverInfo.icon64 })

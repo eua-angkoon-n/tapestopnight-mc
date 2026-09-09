@@ -145,13 +145,19 @@ export async function handleConfigApply(
         packDir: env.packDir,
         renderedBy: interaction.user.id,
         docker: env.docker,
+        // Supplied from the environment, never from a config_key row — a
+        // locked key's value is displayed on the admin page (ADR-0003) and
+        // this one is a password.
+        secrets: { "rcon.password": env.rcon.password },
       });
 
       // Thrown so countdownThen's success message is not sent over a failure.
       // The message is already written for the operator.
       if (!outcome.ok) {
         throw new Error(
-          outcome.failedAt === "properties"
+          outcome.failedAt === "precondition"
+            ? `Apply ถูกยกเลิกก่อนเขียนไฟล์: ${outcome.error}`
+            : outcome.failedAt === "properties"
             ? `เขียน server.properties ไม่สำเร็จ: ${outcome.error} — ไม่ได้รีสตาร์ท`
             : `เขียนไฟล์แล้วแต่รีสตาร์ทไม่สำเร็จ: ${outcome.error} — ` +
               "ค่าใหม่จะมีผลเมื่อรีสตาร์ทครั้งถัดไป",

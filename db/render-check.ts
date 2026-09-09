@@ -58,7 +58,61 @@ if (renderProperties([...original].map(([key, value]) => ({ key, value }))) !== 
   problems.push("UNSTABLE  renderer is not deterministic");
 }
 
+/*
+  Escaping must survive a round trip.
+
+  These are the cases that corrupt the file rather than merely looking odd:
+  server.properties is line-oriented, so an unescaped newline in a MOTD turns
+  the rest of the value into a garbage key and takes every following line with
+  it. The escape helpers were previously no-ops — their right-hand sides were
+  real control characters instead of the two-character sequences — and no test
+  noticed, because the pack ships no value containing one.
+*/
+const AWKWARD: Record<string, string> = {
+  "motd-newline": "line one\nline two",
+  "motd-backslash": "C:\\path\\to\\thing",
+  "motd-tab": "before\tafter",
+  // The case a chain of replaceAll gets wrong: a literal backslash, then "n".
+  "motd-backslash-n": "literal\\nnot-a-newline",
+};
+for (const [key, value] of Object.entries(AWKWARD)) {
+  const back = parseProperties(renderProperties([{ key, value }])).get(key);
+  if (back !== value) {
+    problems.push(`ESCAPE    ${key}: ${JSON.stringify(value)} -> ${JSON.stringify(back)}`);
+  }
+}
+if (renderProperties([{ key: "motd", value: "a\nb" }]).split("\n").filter((l) => l.startsWith("motd=")).length !== 1) {
+  problems.push("ESCAPE    a newline in a value split the file across two lines");
+}
+
+/*
+  Secrets are injected, never stored (SECRET_KEYS).
+
+  ADR-0003 displays locked keys WITH their values on the admin page, so an
+  rcon.password row would print the password to every admin. A stored row is
+  therefore dropped rather than trusted, and the environment value used.
+*/
+const withSecret = renderProperties(
+  [
+    { key: "enable-rcon", value: "true" },
+    { key: "rcon.password", value: "leaked-from-the-database" },
+  ],
+  {},
+  { "rcon.password": "injected-from-env" },
+);
+if (parseProperties(withSecret).get("rcon.password") !== "injected-from-env") {
+  problems.push("SECRET    the injected value did not win over the stored row");
+}
+if (withSecret.includes("leaked-from-the-database")) {
+  problems.push("SECRET    a stored rcon.password row reached the rendered file");
+}
+if (parseProperties(renderProperties([{ key: "rcon.password", value: "x" }])).has("rcon.password")) {
+  problems.push("SECRET    rcon.password rendered from the database with no secret supplied");
+}
+
 console.log(`source   : ${path}`);
+console.log(`escaping : ${Object.keys(AWKWARD).length} awkward values round-tripped`);
+console.log(`secrets  : rcon.password injected; stored row ignored`);
 console.log(`keys     : ${original.size} in, ${roundTripped.size} out`);
 console.log(`banner   : ${hasBanner ? "present" : "ABSENT"}`);
 console.log(`comment lines added: ${rendered.split("\n").filter((l) => l.startsWith("#")).length}`);

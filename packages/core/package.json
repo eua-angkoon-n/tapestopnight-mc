@@ -6,6 +6,7 @@
   "exports": {
     "./db": "./src/db/index.ts",
     "./config": "./src/config/index.ts",
+    "./config/icon": "./src/config/icon.ts",
     "./control": "./src/control/index.ts",
     "./auth": "./src/auth/index.ts"
   },

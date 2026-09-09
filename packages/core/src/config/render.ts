@@ -32,6 +32,23 @@ export const GENERATED_BANNER = [
   "#############################################################################",
 ];
 
+/**
+ * Keys whose value is a SECRET and must never live in the `config_key` table.
+ *
+ * ADR-0003 deliberately DISPLAYS locked keys on the admin page, with their
+ * values, so that nobody goes hunting for the file over SSH. `rcon.password`
+ * is locked — so storing it as a row would print the RCON password to every
+ * admin who opens /config. It is therefore supplied at render time from the
+ * environment instead, and a row of this name is ignored if one ever appears.
+ *
+ * The secret consequently lives in exactly one place: deploy/.env, which is
+ * gitignored and readable only by root on the Host.
+ */
+export const SECRET_KEYS: ReadonlySet<string> = new Set(["rcon.password"]);
+
+/** Secret values injected at render time. Keys must be in SECRET_KEYS. */
+export type RenderSecrets = Readonly<Record<string, string>>;
+
 export interface RenderMeta {
   /** Stamped by the caller. The renderer takes no clock of its own so that
    *  rendering the same rows twice produces identical text. */
@@ -42,6 +59,7 @@ export interface RenderMeta {
 export function renderProperties(
   entries: ReadonlyArray<{ key: string; value: string }>,
   meta: RenderMeta = {},
+  secrets: RenderSecrets = {},
 ): string {
   const lines = [...GENERATED_BANNER];
 
@@ -49,7 +67,19 @@ export function renderProperties(
   if (meta.renderedBy) lines.push(`# rendered-by: ${meta.renderedBy}`);
   lines.push("");
 
-  const sorted = [...entries].sort((a, b) => (a.key < b.key ? -1 : a.key > b.key ? 1 : 0));
+  // A stored row for a secret key is dropped rather than trusted, so a stray
+  // INSERT can neither leak onto the admin page nor override the environment.
+  const merged = new Map<string, string>();
+  for (const { key, value } of entries) {
+    if (SECRET_KEYS.has(key)) continue;
+    merged.set(key, value);
+  }
+  for (const [key, value] of Object.entries(secrets)) {
+    if (value) merged.set(key, value);
+  }
+
+  const sorted = [...merged, ].map(([key, value]) => ({ key, value }))
+    .sort((a, b) => (a.key < b.key ? -1 : a.key > b.key ? 1 : 0));
   for (const { key, value } of sorted) {
     lines.push(`${key}=${escapeValue(value)}`);
   }
@@ -60,15 +90,20 @@ export function renderProperties(
 /**
  * Java Properties escaping, limited to what actually bites here.
  *
- * The MOTD is the field admins will paste odd characters into, and a literal
- * backslash or a newline in it would corrupt every line that follows.
+ * The MOTD is the field admins paste odd characters into, and an unescaped
+ * newline in it corrupts every line that follows: server.properties is
+ * line-oriented, so the remainder of the value is read as a garbage key.
+ *
+ * The last three replacements used to be no-ops. Their right-hand sides were
+ * the real control characters rather than the two-character escape sequences,
+ * so `.replaceAll("\n", "\n")` replaced a newline with a newline.
  */
 function escapeValue(value: string): string {
   return value
     .replaceAll("\\", "\\\\")
-    .replaceAll("\n", "\n")
-    .replaceAll("\r", "\r")
-    .replaceAll("\t", "\t");
+    .replaceAll("\n", "\\n")
+    .replaceAll("\r", "\\r")
+    .replaceAll("\t", "\\t");
 }
 
 /** Parse a server.properties file into key -> value, ignoring comments. */
@@ -84,19 +119,38 @@ export function parseProperties(text: string): Map<string, string> {
   return out;
 }
 
+/**
+ * Single pass, deliberately.
+ *
+ * A chain of replaceAll cannot undo the escaping correctly. After escaping,
+ * the three characters `\`, `\`, `n` mean "a literal backslash, then the
+ * letter n" — but a chain that rewrites `\n` first turns them into a newline.
+ * Scanning once and consuming whatever follows each backslash is the only
+ * version that round-trips. An unknown escape yields the bare character,
+ * matching Java Properties.
+ */
 function unescapeValue(value: string): string {
-  return value
-    .replaceAll("\n", "\n")
-    .replaceAll("\r", "\r")
-    .replaceAll("\t", "\t")
-    .replaceAll("\\\\", "\\");
+  let out = "";
+  for (let i = 0; i < value.length; i++) {
+    if (value[i] !== "\\") {
+      out += value[i];
+      continue;
+    }
+    const next = value[++i];
+    out += next === "n" ? "\n" : next === "r" ? "\r" : next === "t" ? "\t" : (next ?? "");
+  }
+  return out;
 }
 
 /** Read the Desired Config and render it. */
-export async function renderFromDb(db: Database, meta: RenderMeta = {}): Promise<string> {
+export async function renderFromDb(
+  db: Database,
+  meta: RenderMeta = {},
+  secrets: RenderSecrets = {},
+): Promise<string> {
   const rows = await db
     .select({ key: configKey.key, value: configKey.value })
     .from(configKey)
     .orderBy(asc(configKey.key));
-  return renderProperties(rows, meta);
+  return renderProperties(rows, meta, secrets);
 }
