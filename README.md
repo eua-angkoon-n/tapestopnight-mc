@@ -94,11 +94,32 @@ commands on boot so DISCO NIGHT's do not linger.
 → [ADR-0008](./docs/adr/0008-reuse-discord-application.md)
 
 **Check for config drift.** An overlay cannot see someone hand-editing a mod config on the
-Host, so this reports mismatches against (verified zip + overlay):
+Host. Runs daily at 05:30 Bangkok; run it by hand any time:
 
 ```bash
-deploy/check-drift.sh
+deploy/check-drift.sh              # vs the accepted baseline — what cron runs
+deploy/check-drift.sh --accept     # record the current state as accepted
+deploy/check-drift.sh --vs-pack    # vs (verified zip + overlay), the ADR-0009 question
 ```
+
+It compares against an **accepted baseline**, not against the pack, and that is deliberate:
+compared against the pristine zip the first real run reported 136 differences and not one was
+a human edit — Forge mods rewrite their own `.cfg` on first boot and srpmixins alone generates
+96 loot tables. A daily job reporting 136 items is one nobody reads. Re-run `--accept` after a
+deliberate pack upgrade, never to silence a report you have not read.
+
+**Backups.** Daily at 05:00 Bangkok, 14 kept, into `/srv/mc/backups`:
+
+```bash
+deploy/backup.sh                   # both
+deploy/backup.sh db                # Postgres only
+deploy/backup.sh world             # world only
+```
+
+The world is flushed over RCON (`save-off`, `save-all flush`) before it is copied, so the
+archive is consistent rather than hopeful, and saving is re-enabled by a trap even if the
+archive fails. A world left with saving disabled silently discards everything until the next
+restart, which is worse than a failed backup.
 
 **Pre-generate the world.** Runs at the normal `7G` with everything else up. Remove the
 pregen mod afterwards. → ADR-0012

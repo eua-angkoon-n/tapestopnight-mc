@@ -90,16 +90,45 @@ plan needs.
 | 3001 | `docker-proxy` → ledger app — **loopback only**, correct |
 | 53 | `systemd-resolved` — loopback only |
 
-## Follow-ups this surfaced
+## Follow-ups this surfaced — all closed (2026-09-09)
 
-- Open **25565/tcp** in `ufw`.
-- Add a **4 GB swap file with `vm.swappiness=1`** — required by ADR-0012's mitigations, and
-  `vm.swappiness` is currently the default 60.
-- **Disable SSH password authentication.** Key auth now works; the box has no `fail2ban`, and
-  port 22 is open to the world. This is the cheapest hardening available and closes the
-  brute-force exposure that the setup attempts made visible.
-- Namespace our compose project so nothing collides with `family-ledger` — distinct project
-  name, network, container names, and volumes.
+- ~~Open **25565/tcp** in `ufw`.~~ Done; inbound is 22, 80, 443, 25565 and nothing else.
+- ~~Add a **4 GB swap file with `vm.swappiness=1`**.~~ Done — 4095 MB swap, `vm.swappiness = 1`,
+  and it is a safety net for the *other* processes only. Swapping a JVM heap destroys TPS.
+- ~~**Disable SSH password authentication.**~~ Done. Two subtleties worth recording:
+
+  Two files disagreed — `50-cloud-init.conf` said `yes` and `60-cloudimg-settings.conf` said
+  `no` — and sshd takes the **first** value it reads, so the `50-` file was winning and the
+  `60-` file looked like protection that was not there. The `50-` file is the one that was
+  changed. `PermitRootLogin` is now `prohibit-password` as well.
+
+  The change was made behind a **dead-man switch**: a `systemd-run --on-active=5min` timer
+  armed to restore the backup before anything was edited, cancelled only after a brand-new
+  key-based connection was proven to work. Locking yourself out of a box you administer over
+  SSH is a self-inflicted outage, and the recovery path (Contabo's console) is slow.
+
+  Verified after: a fresh key connection succeeds; `ssh -o PreferredAuthentications=password`
+  is refused with `Permission denied (publickey)`.
+
+- ~~Namespace our compose project so nothing collides with `family-ledger`.~~ Done.
+
+**`fail2ban` is still not installed, and that is now a deliberate choice.** With password
+authentication off, SSH brute force has nothing to guess: an attacker needs a private key, and
+fail2ban would only be trimming log noise. Revisit if a password-authenticated service is ever
+added.
+
+## Scheduled jobs (added 2026-09-09)
+
+`/etc/cron.d/tapestopnight`, times pinned with `CRON_TZ=Asia/Bangkok` because the Host runs
+Europe/Berlin, the containers run Asia/Bangkok, and the players are in Thailand.
+
+| When (Bangkok) | What |
+|---|---|
+| 05:00 daily | `deploy/backup.sh all` → `/var/log/tapestopnight-backup.log` |
+| 05:30 daily | `deploy/check-drift.sh` → `/var/log/tapestopnight-drift.log` |
+
+Backups land in `/srv/mc/backups/{db,world}`, 14 of each kept. The drift baseline lives at
+`/srv/mc/state/drift-baseline.sha256`.
 - Reuse of `family-ledger-db-1` for our schema was considered and **declined**: sharing the
   ledger's database container would couple our migrations, restarts and backups to a system we
   promised not to disturb. A separate Postgres costs ~300 MB and buys full isolation.

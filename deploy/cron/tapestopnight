@@ -1,0 +1,25 @@
+# Scheduled jobs for the tapestopnight Game Server + Control Plane.
+#
+# Install with:  cp deploy/cron/tapestopnight /etc/cron.d/tapestopnight
+#                chmod 644 /etc/cron.d/tapestopnight
+#
+# CRON_TZ is set on purpose. The Host runs Europe/Berlin, the containers run
+# Asia/Bangkok, and the players are in Thailand — so a time written in the
+# Host's zone would mean nothing to anyone reading it, and would shift by an
+# hour twice a year relative to the people it is meant to avoid. These times
+# are the ones players experience.
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+CRON_TZ=Asia/Bangkok
+
+# ── Backups, 05:00 Bangkok ───────────────────────────────────────────
+# The quiet hour for the actual player base. The world is flushed over RCON
+# before it is copied, so this is consistent rather than hopeful, and saving
+# is re-enabled by a trap even if the archive fails.
+0 5 * * * root /srv/mc/repo/deploy/backup.sh all >> /var/log/tapestopnight-backup.log 2>&1
+
+# ── Config drift, 05:30 Bangkok ──────────────────────────────────────
+# An overlay cannot see a file someone edited directly on the Host. This
+# reports mismatches against (verified zip + overlay) so drift is reported
+# rather than discovered months later while debugging something else.
+30 5 * * * root /srv/mc/repo/deploy/check-drift.sh >> /var/log/tapestopnight-drift.log 2>&1
