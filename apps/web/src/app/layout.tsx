@@ -34,6 +34,27 @@ export const metadata: Metadata = {
   title: "RLCraft Dregora — tapestopnight.com",
   description:
     "เซิร์ฟเวอร์ RLCraft Dregora v1.1.2b — Minecraft 1.12.2 Forge. ดูสถานะเซิร์ฟเวอร์ ไอพี และลิงก์ดาวน์โหลด modpack",
+
+  /*
+   * The browser tab icon is the Server Icon — the same upload players see in
+   * their multiplayer list, read from the same Postgres row. One image, set
+   * once, used in three places.
+   *
+   * Pointed at the route rather than a file in public/: the icon is
+   * admin-editable, and a static favicon.ico would be a second copy that kept
+   * quietly showing the old image after every upload.
+   *
+   * `v=64` is the exact 64x64 derivative, which is already the size a favicon
+   * wants. The high-resolution original serves the Apple touch icon, where a
+   * 64px image looks soft on a home screen.
+   *
+   * With no icon uploaded the route answers 404 and browsers fall back to
+   * their own default, which is the right way for this to be absent.
+   */
+  icons: {
+    icon: [{ url: "/api/icon?v=64", type: "image/png", sizes: "64x64" }],
+    apple: [{ url: "/api/icon" }],
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
