@@ -17,10 +17,14 @@ keywords = ["discord"]
 [[rules]]
 id = "rcon-password-assignment"
 description = "RCON password assigned a literal value"
-regex = '''(?i)rcon[._-]?password\s*[=:]\s*["']?[^\s"'$#{][^\s"']{3,}'''
+# `?` is excluded from the first character because docker compose's
+# "required variable" syntax, ${RCON_PASSWORD:?message}, contains a literal
+# `RCON_PASSWORD:?RCON_PASSWORD ...` that this rule otherwise reads as an
+# assignment. See the allowlist below for the same problem from the other end.
+regex = '''(?i)rcon[._-]?password\s*[=:]\s*["']?[^\s"'$#{?][^\s"']{3,}'''
 keywords = ["rcon"]
 
-[allowlist]
+[[allowlists]]
 description = "Placeholders and documentation are not leaks"
 paths = [
   '''\.env\.example$''',
@@ -31,4 +35,22 @@ paths = [
 regexes = [
   '''CHANGEME''',
   '''<[a-z-]+>''',
+]
+
+# Compose variable references are not values.
+#
+# `${RCON_PASSWORD:?message}` and `${DB_PASSWORD:-default}` name a variable and
+# supply an error or a fallback; the secret itself lives in deploy/.env, which
+# is gitignored. Matched against the whole LINE rather than the captured
+# secret, because the false positive starts partway into the reference and the
+# `${` that proves it is a reference sits to the left of the match.
+#
+# This was a real finding on a full-history scan (commit 7f57e9f). Left in
+# place it would train the next person to ignore this scanner's output, which
+# is how a genuine leak gets waved through.
+[[allowlists]]
+description = "docker compose ${VAR:?...} / ${VAR:-...} references"
+regexTarget = "line"
+regexes = [
+  '''\$\{[A-Za-z_][A-Za-z0-9_]*:[?-]''',
 ]
