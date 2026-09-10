@@ -41,7 +41,21 @@ export class LogTailer {
   /** A read can stop mid-line; the tail of the buffer waits for the rest. */
   #partial = "";
 
-  constructor(private readonly opts: TailerOptions) {}
+  /*
+    A plain field assignment, NOT a constructor parameter property.
+
+    The bot runs under `node --experimental-strip-types`, which erases type
+    annotations without transforming anything — and a parameter property is a
+    transform, because it emits an assignment that is not in the source. Node
+    refuses the whole module with ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX at import
+    time. `tsc --noEmit` says nothing, because the syntax is perfectly valid
+    TypeScript; it is the runtime that cannot run it.
+  */
+  readonly #opts: TailerOptions;
+
+  constructor(opts: TailerOptions) {
+    this.#opts = opts;
+  }
 
   /**
    * Catch up to the end of the file.
@@ -53,7 +67,7 @@ export class LogTailer {
   async tick(): Promise<void> {
     let info;
     try {
-      info = await stat(this.opts.path);
+      info = await stat(this.#opts.path);
     } catch {
       // Missing log — the Game Server is between restarts. Forget where we
       // were, so the replacement file is read from its start rather than from
@@ -84,7 +98,7 @@ export class LogTailer {
     if (info.size === this.#offset) return;
 
     const length = info.size - this.#offset;
-    const handle = await open(this.opts.path, "r");
+    const handle = await open(this.#opts.path, "r");
     let text: string;
     try {
       const buffer = Buffer.alloc(length);
@@ -104,11 +118,11 @@ export class LogTailer {
       const event = parseLine(line.replace(/\r$/, ""));
       if (!event) continue;
       try {
-        await this.opts.onEvent(event);
+        await this.#opts.onEvent(event);
       } catch (err) {
         // One bad event must not stop the rest of the batch, and must not
         // rewind the offset — a line that fails twice would fail forever.
-        this.opts.onError(err instanceof Error ? err.message : String(err));
+        this.#opts.onError(err instanceof Error ? err.message : String(err));
       }
     }
   }
