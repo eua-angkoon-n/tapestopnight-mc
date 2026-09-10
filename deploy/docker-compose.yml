@@ -16,9 +16,20 @@ services:
     tty: true
 
     ports:
-      # 25565 only. RCON on 25575 is reachable from inside this network and is
-      # NEVER published to the Host — see the design notes.
+      # RCON on 25575 is reachable from inside this network and is NEVER
+      # published to the Host — see the design notes.
       - "25565:25565"
+
+      # ── ADR-0017: Simple Voice Chat ─────────────────────────────
+      # UDP, and a DIFFERENT port from the game on purpose: the mod's own
+      # config warns that sharing 25565 collides with the server query and
+      # "may crash the server". The /udp suffix is not optional — without it
+      # Docker publishes TCP, the mod binds UDP, and voice fails with the port
+      # looking open to every tool that checks it.
+      #
+      # Also needs `ufw allow 24454/udp` on the Host; the compose publish and
+      # the firewall are two separate doors and both have to be open.
+      - "24454:24454/udp"
 
     volumes:
       # The pack materialised by deploy/fetch-modpack.sh from the pinned

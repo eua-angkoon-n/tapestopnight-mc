@@ -1,0 +1,40 @@
+# Mods added to the pack AFTER unpacking the pinned zip — ADR-0017.
+#
+# Until this file existed, the Game Server's mods/ directory was exactly what
+# came out of the verified archive. It is now "the archive, plus these". That
+# is a real change to what `modpack.lock` alone can promise, which is why it
+# is a separate file with the same discipline rather than a line in a script:
+# a URL and a SHA256, verified before anything is written.
+#
+# Why not just put the jar in the zip: the zip is UPSTREAM's. Rebuilding it to
+# add one mod would fork RLCraft Dregora onto a hash nobody else can verify,
+# and every future pack update would have to be re-forked the same way.
+#
+# ⚠ Every entry here must be re-checked against MINECRAFT_VERSION and
+# FORGE_VERSION in modpack.lock on any pack upgrade. fetch-modpack.sh unpacks
+# with `unzip -o` and does NOT clear mods/, so these jars SURVIVE a pack
+# upgrade — including one to a Minecraft version they do not support, where a
+# stale jar stops the server booting at all.
+
+# ── Simple Voice Chat ────────────────────────────────────────────────
+#
+# Proximity voice. Verified by inspecting the jar, not by reading a page:
+#
+#   Java 8 bytecode (class major 52)   matches JAVA_MAJOR=8
+#   acceptedMinecraftVersions [1.12.2] matches MINECRAFT_VERSION
+#   acceptableRemoteVersions  "*"      ← the reason this mod and not another
+#
+# That last one is what makes this safe to add to a live server. Forge 1.12.2
+# performs a mod-list handshake on connect and normally kicks a client whose
+# list differs; "*" means players WITHOUT the mod still join and play exactly
+# as before, they simply have no voice.
+#
+# The URL is Modrinth's. CurseForge serves the same mod under a DIFFERENT
+# hash — the two builds differ only in META-INF/MANIFEST.MF (CurseForge's is
+# one byte longer); all 1,633 entries have identical names and mcmod.info and
+# ForgeVoicechatMod.class are byte-identical. Players may install from either.
+# What has to match between client and server is the VERSION STRING, not the
+# file hash — so do not copy this SHA into the player-facing runbook.
+EXTRA_MODS=(
+  "voicechat-forge-1.12.2-2.6.23.jar|https://cdn.modrinth.com/data/9eGKb6K1/versions/CZ4dKoMk/voicechat-forge-1.12.2-2.6.23.jar|fdb855282ee0a2d97bb108581e70ca8c8115e65f1830a6b06f2948cd29ffe399|5877794|1.12.2"
+)
