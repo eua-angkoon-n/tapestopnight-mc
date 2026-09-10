@@ -44,6 +44,12 @@ jobs:
         # A new subcommand added without an authorisation decision would
         # default to public, which is the wrong way for that mistake to fail.
         run: npm run bot:check
+      - name: The Chat Bridge reads what the Host emits, and cannot echo itself
+        # Two silent failures at once. The parser fails by going QUIET rather
+        # than by erroring, so a broken regex ships looking fine; and the
+        # sanitiser is what stops text typed on a public page reaching a
+        # tellraw payload intact. ADR-0015.
+        run: npm run bridge:check
 
   images:
     # Only publish from main and tags; a pull request gets the checks, not a push.
