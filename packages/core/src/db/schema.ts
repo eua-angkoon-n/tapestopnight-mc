@@ -221,13 +221,20 @@ export const chatMessage = pgTable(
  */
 export const bridgeChannelKind = pgEnum("bridge_channel_kind", ["chat", "milestone"]);
 
-export const bridgeChannel = pgTable("bridge_channel", {
-  channelId: text("channel_id").primaryKey(),
-  kind: bridgeChannelKind("kind").notNull(),
-  note: text("note"),
-  /** When false the row is kept for the record but stops being used. */
-  enabled: boolean("enabled").notNull().default(true),
-});
+export const bridgeChannel = pgTable(
+  "bridge_channel",
+  {
+    channelId: text("channel_id").notNull(),
+    kind: bridgeChannelKind("kind").notNull(),
+    note: text("note"),
+    /** When false the row is kept for the record but stops being used. */
+    enabled: boolean("enabled").notNull().default(true),
+  },
+  // Keyed by (channel, kind), not by channel alone. One channel carrying both
+  // the conversation and the congratulations is a normal way to run a small
+  // server — the first draft keyed on the channel and could not express it.
+  (t) => [primaryKey({ columns: [t.channelId, t.kind] })],
+);
 
 /**
  * Discord account ↔ Minecraft name.

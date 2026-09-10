@@ -108,6 +108,14 @@ one bridge (ADR-0015). Three things have to be true before it says anything:
      ('<channel id>', 'chat',      'ห้องแชทเชื่อมเกม'),
      ('<channel id>', 'milestone', 'ห้องประกาศความสำเร็จ');
    ```
+
+   The key is `(channel_id, kind)`, so **the same channel may take both** — which
+   is how this server runs it. The bot ignores its own messages, so its
+   congratulations do not come back as chat.
+
+   The bot has no guild-wide permissions on purpose; it is granted per channel.
+   A new channel must give the bot's role **View Channel** and **Send Messages**
+   or the bridge is silent with nothing anywhere saying why.
 3. **The milestone allowlist is seeded**, or nothing is ever worth announcing:
 
    ```bash
