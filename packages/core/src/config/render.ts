@@ -200,3 +200,26 @@ export async function renderFromDb(
     .orderBy(asc(configKey.key));
   return renderProperties(rows, meta, secrets);
 }
+
+/**
+ * Decode a `\u` + four hex digits escape in a value an admin typed.
+ *
+ * Every MOTD generator on the internet emits colour codes in that escape form
+ * rather than as the `§` character, because that is what a Java properties file
+ * looks like — and `§` is on nobody's keyboard. Pasting one of those strings
+ * used to store six literal characters, which the renderer then faithfully
+ * escaped, and the server displayed the escape sequence instead of a colour.
+ *
+ * So the panel accepts both spellings and stores the CHARACTER. What is held in
+ * Postgres is the text itself (ADR-0002), not one of several ways of spelling
+ * it; how it reaches the file is `escapeValue`'s problem and nobody else's.
+ *
+ * ONLY that escape is decoded — never `\n`, `\t` or a doubled backslash. This
+ * runs on every key, not just the MOTD, and a Windows path typed into some
+ * future key has to survive being typed.
+ */
+export function decodeUnicodeEscapes(value: string): string {
+  return value.replace(/\\u([0-9a-fA-F]{4})/g, (_, hex: string) =>
+    String.fromCharCode(parseInt(hex, 16)),
+  );
+}

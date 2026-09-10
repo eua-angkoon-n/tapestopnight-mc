@@ -2,7 +2,7 @@ import { EmbedBuilder, MessageFlags, type ChatInputCommandInteraction } from "di
 import { eq } from "drizzle-orm";
 
 import { configHistory, configKey, type Database } from "@tapestopnight/core/db";
-import { applyDesiredConfig, tierFor } from "@tapestopnight/core/config";
+import { applyDesiredConfig, decodeUnicodeEscapes, tierFor } from "@tapestopnight/core/config";
 
 import { env } from "../env.ts";
 import { countdownThen } from "./server.ts";
@@ -61,7 +61,9 @@ export async function handleConfigSet(
   db: Database,
 ): Promise<void> {
   const key = interaction.options.getString("key", true);
-  const value = interaction.options.getString("value", true);
+  // Accept `§` as well as `§` — same reason as the web panel: every MOTD
+  // generator emits the escape form and `§` is on nobody's keyboard.
+  const value = decodeUnicodeEscapes(interaction.options.getString("value", true));
   const confirmed = interaction.options.getBoolean("confirm") ?? false;
   const rule = tierFor(key);
 

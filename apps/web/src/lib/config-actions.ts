@@ -7,6 +7,7 @@ import { configKey, configHistory, createDb, serverInfo } from "@tapestopnight/c
 import {
   IconError,
   applyDesiredConfig,
+  decodeUnicodeEscapes,
   assertIcon64,
   assertSource,
   sha256Hex,
@@ -39,8 +40,13 @@ export interface ActionResult {
  * would sail past it. This is the check that actually holds the line, and it
  * reads the same TIERS table the UI reads so the two can never disagree.
  */
-export async function setConfigValue(key: string, value: string): Promise<ActionResult> {
+export async function setConfigValue(key: string, raw: string): Promise<ActionResult> {
   const { discordId } = await requireAdmin();
+
+  // Accept `§` as well as `§`. Every MOTD generator emits the escape
+  // form, and Postgres holds the text itself rather than one of the ways to
+  // spell it (ADR-0002). Getting the file right is the renderer's job.
+  const value = decodeUnicodeEscapes(raw);
 
   const rule = tierFor(key);
   if (rule.tier === "LOCKED") {
