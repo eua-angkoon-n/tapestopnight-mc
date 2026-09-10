@@ -74,6 +74,14 @@ const AWKWARD: Record<string, string> = {
   "motd-tab": "before\tafter",
   // The case a chain of replaceAll gets wrong: a literal backslash, then "n".
   "motd-backslash-n": "literal\\nnot-a-newline",
+  // Colour codes. These reached the file and went no further: the backslash
+  // rule escaped `§` to `\\u00A7`, Java read a literal backslash followed by
+  // u00A7, and the MOTD displayed the escape sequence instead of a colour.
+  "motd-section": "§6§lfrom the§8§l §mdepths§r §6§lof the §4§l§onether",
+  "motd-thai": "เซิร์ฟเวอร์ RLCraft Dregora",
+  // Astral plane: Java wants a surrogate pair as two escapes, which is how a
+  // JS string already holds it.
+  "motd-astral": "boss 🐉 down",
 };
 for (const [key, value] of Object.entries(AWKWARD)) {
   const back = parseProperties(renderProperties([{ key, value }])).get(key);
@@ -83,6 +91,24 @@ for (const [key, value] of Object.entries(AWKWARD)) {
 }
 if (renderProperties([{ key: "motd", value: "a\nb" }]).split("\n").filter((l) => l.startsWith("motd=")).length !== 1) {
   problems.push("ESCAPE    a newline in a value split the file across two lines");
+}
+
+/*
+  The rendered file must be pure ASCII.
+
+  Not a style rule — it is the whole reason non-ASCII is escaped. We write this
+  file and Minecraft reads it, and Java's Properties has historically read a
+  .properties stream as ISO-8859-1. A `§` written as UTF-8 is the two bytes
+  C2 A7, which a Latin-1 reader shows as `Â§`; Thai fares far worse. A \uXXXX
+  escape decodes identically whichever way the file is read, so the encoding
+  stops being a question anyone has to get right.
+*/
+const nonAscii = [...renderProperties(Object.entries(AWKWARD).map(([key, value]) => ({ key, value })))]
+  .filter((c) => c.charCodeAt(0) > 0x7e);
+if (nonAscii.length > 0) {
+  problems.push(
+    `ENCODING  ${nonAscii.length} non-ASCII character(s) reached the file: ${JSON.stringify(nonAscii.join(""))}`,
+  );
 }
 
 /*

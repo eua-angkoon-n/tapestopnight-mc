@@ -97,13 +97,46 @@ export function renderProperties(
  * The last three replacements used to be no-ops. Their right-hand sides were
  * the real control characters rather than the two-character escape sequences,
  * so `.replaceAll("\n", "\n")` replaced a newline with a newline.
+ *
+ * ── Why non-ASCII is written as \uXXXX and not as itself ─────────────────────
+ *
+ * Because the file's encoding is not ours to decide. We write it; Minecraft
+ * reads it, and Java's Properties has historically read a .properties stream as
+ * ISO-8859-1. A `§` written as UTF-8 is the two bytes C2 A7, which a Latin-1
+ * reader renders as `Â§` — the classic mangled MOTD — and Thai text fares far
+ * worse. A `\uXXXX` escape is pure ASCII on the wire and decodes identically
+ * whichever way the file is read, which is exactly why Java properties files
+ * have always carried non-ASCII this way.
+ *
+ * The bug this fixes, stated plainly so it is not reintroduced: a `§` written
+ * by an admin as the six characters `§` used to reach the file and go no
+ * further, because the backslash rule below escaped it to `\\u00A7`. Java then
+ * read "a literal backslash, then u00A7", and the MOTD displayed the escape
+ * sequence itself rather than a colour.
+ *
+ * Escaping per UTF-16 code unit is deliberate, not lazy: Java expects an astral
+ * character as two escapes, which is exactly how a JS string already holds it.
  */
 function escapeValue(value: string): string {
-  return value
-    .replaceAll("\\", "\\\\")
-    .replaceAll("\n", "\\n")
-    .replaceAll("\r", "\\r")
-    .replaceAll("\t", "\\t");
+  let out = "";
+  for (const char of value) {
+    if (char === "\\") {
+      out += "\\\\";
+    } else if (char === "\n") {
+      out += "\\n";
+    } else if (char === "\r") {
+      out += "\\r";
+    } else if (char === "\t") {
+      out += "\\t";
+    } else if (char >= " " && char <= "~") {
+      out += char;
+    } else {
+      for (let i = 0; i < char.length; i++) {
+        out += "\\u" + char.charCodeAt(i).toString(16).padStart(4, "0").toUpperCase();
+      }
+    }
+  }
+  return out;
 }
 
 /** Parse a server.properties file into key -> value, ignoring comments. */
@@ -137,6 +170,19 @@ function unescapeValue(value: string): string {
       continue;
     }
     const next = value[++i];
+    if (next === "u") {
+      // \uXXXX — the form every non-ASCII character is written in. Four hex
+      // digits, and if they are not there this is not an escape at all, so the
+      // bare `u` is kept rather than silently eating the rest of the line.
+      const hex = value.slice(i + 1, i + 5);
+      if (/^[0-9a-fA-F]{4}$/.test(hex)) {
+        out += String.fromCharCode(parseInt(hex, 16));
+        i += 4;
+        continue;
+      }
+      out += "u";
+      continue;
+    }
     out += next === "n" ? "\n" : next === "r" ? "\r" : next === "t" ? "\t" : (next ?? "");
   }
   return out;
