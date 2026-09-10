@@ -178,7 +178,10 @@ Minecraft version, but re-pin deliberately after any pack change.
 
 If voice connects but nobody can hear anyone, it is almost certainly `voice_host`: the apex is
 Cloudflare-proxied and does not carry UDP (ADR-0001), so packets aimed at it vanish silently.
-Check with `tcpdump -ni any udp port 24454` while somebody talks.
+Check with `tcpdump -ni any udp port 24454` while somebody talks. The config lives at
+`config/voicechat/voicechat-server.properties` — note the `voicechat/` directory; a file one
+level up is silently ignored, which is how `voice_host` came to be blank on a server that
+otherwise looked deployed.
 
 **Check for config drift.** An overlay cannot see someone hand-editing a mod config on the
 Host. Runs daily at 05:30 Bangkok; run it by hand any time:

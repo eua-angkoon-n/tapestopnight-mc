@@ -27,7 +27,7 @@ Everything below was read out of the jar, not off a web page.
 | `acceptedMinecraftVersions` | `[1.12.2]` |
 | **`acceptableRemoteVersions`** | **`"*"`** — on `voicechat` and `voicechat_api` both |
 | Default port | `24454`, UDP |
-| Config | `config/voicechat-server.properties` |
+| Config | `config/voicechat/voicechat-server.properties` |
 | Natives | `linux-x64` present (opus, rnnoise, speex, lame) |
 | Published | 2026-09-04 |
 
@@ -92,10 +92,20 @@ rather than a half-remembered filename.
 - `check-drift.sh` compares only `config` and `scripts`, so a jar in `mods/` is
   invisible to it — but `config/voicechat-server.properties` is not. Re-accept
   the baseline after the first boot.
-- The overlay carries **two keys**, not a full config. The mod writes the rest
-  with its own defaults; a value equal to the default is not a decision. After
-  first boot the rendered file is copied back into `overlay/config/`, or the
-  overlay and disk differ forever.
+- The overlay carries the **whole rendered config**, of which exactly two
+  values are ours. A two-key overlay would work — the mod fills in what is
+  missing — but disk would then differ from the overlay forever and
+  `--vs-pack` would report it every time. Reviewing that file is reviewing the
+  effective config.
+- **The config path was got wrong on the first attempt, and it is worth saying
+  how.** The path was assembled from two strings found separately in the jar's
+  constant pool, `"config"` and `"voicechat-server.properties"`, joined without
+  the modid segment that sits between them. The mod ignored the resulting file
+  and wrote its own with defaults — so `voice_host` was blank, which is exactly
+  the silent failure it exists to prevent, on a server that otherwise looked
+  fully deployed. `check-drift.sh` is what caught it, by reporting BOTH files
+  as added. Reading a path out of bytecode is a guess until something on disk
+  agrees with it.
 - `fetch-modpack.sh --force` unpacks with `unzip -o` and never clears `mods/`,
   so these jars **survive a pack upgrade** — including one to a Minecraft
   version they do not support, where a stale jar simply stops the server
