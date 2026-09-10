@@ -106,6 +106,17 @@ for entry in "${EXTRA_MODS[@]}"; do
        the hash from the source you actually intend to use."
 
   mv "$tmp" "$target"
+
+  # Match the neighbours, do not inherit mktemp's 0600 root-only mode.
+  #
+  # The container happens to run as root today, so a 0600 jar owned by root is
+  # readable and nothing breaks. That is luck, not design: every other jar in
+  # here is ubuntu:ubuntu 644, and the itzg image supports being told a UID/GID
+  # — the day somebody sets one, Forge would fail to read exactly one mod and
+  # the error would name a class, not a permission.
+  chmod 644 "$target"
+  chown --reference="$MODS" "$target" 2>/dev/null || true
+
   trap - EXIT
   echo "  installed $file"
   echo "            $actual_sha"
