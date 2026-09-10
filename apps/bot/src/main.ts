@@ -217,6 +217,31 @@ log(
 
 await client.login(env.token);
 
+/*
+  Do not die because the Game Server restarted.
+
+  Observed in production: an Apply restarts the Game Server, an in-flight RCON
+  call is cut off, and minecraft-server-util's TCPClient rejects a promise from
+  its socket close handler that nobody is awaiting any more — the call site had
+  already caught the first rejection. Node makes an unhandled rejection fatal by
+  default, so the whole bot exited:
+
+    Error: Socket closed unexpectedly while waiting for data
+      at closeHandler (minecraft-server-util/dist/structure/TCPClient.js:418)
+
+  `restart: unless-stopped` brought it back in seconds, which hid how much that
+  costs: the tailer starts at the END of the log, on purpose, so everything said
+  in the gap is gone. A Game Server restart is a NORMAL event here — Apply
+  performs one — and losing chat every time one happens is not acceptable.
+
+  Logged loudly rather than swallowed. This exists for third-party async
+  fallout, not to make our own bugs quiet, and the log line is how anyone would
+  ever find out it fired.
+*/
+process.on("unhandledRejection", (reason) => {
+  log("!! unhandled rejection (staying up):", reason instanceof Error ? reason.stack : reason);
+});
+
 for (const signal of ["SIGTERM", "SIGINT"] as const) {
   process.on(signal, () => {
     log(`${signal} — shutting down`);
