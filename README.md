@@ -27,7 +27,7 @@ apps/bot        discord.js — slash-command tree
 packages/core   auth · config · control   (shared, so authorisation cannot drift)
 overlay/        ONLY the pack config/scripts we deliberately changed
 db/             migrations + the Edit Tier seed (policy, therefore source)
-deploy/         compose, Dockerfiles, modpack.lock, fetch + drift scripts
+deploy/         compose, Dockerfiles, modpack.lock, extra-mods.lock, fetch + drift scripts
 docs/adr/       the decisions
 ```
 
@@ -35,7 +35,10 @@ docs/adr/       the decisions
 
 The modpack payload (565 MB of jars), the world, `server.properties`, and every secret.
 The pack is pinned by SHA256 in [`deploy/modpack.lock`](./deploy/modpack.lock) and fetched at
-deploy time. → [ADR-0009](./docs/adr/0009-git-excludes-vendor-payload.md)
+deploy time. Mods added on top of the pack are pinned the same way in
+[`deploy/extra-mods.lock`](./deploy/extra-mods.lock).
+→ [ADR-0009](./docs/adr/0009-git-excludes-vendor-payload.md),
+[ADR-0017](./docs/adr/0017-extra-mods-outside-the-pinned-pack.md)
 
 ## Runbook
 
@@ -139,6 +142,43 @@ Cloudflare ranges in it **change** — re-fetch, never copy forward.
 Expect the address match to fail for a good share of players: the game is IPv4-only while the
 website has AAAA records, and two people in one house cannot be told apart. That is why `!link`
 exists, and why it is built to be as smooth as the automatic path. → ADR-0016
+
+**Voice chat.** Proximity audio through
+[Simple Voice Chat](https://www.curseforge.com/minecraft/mc-mods/simple-voice-chat), added on top
+of the pack rather than inside it (ADR-0017).
+
+**Players install this exact version** — `1.12.2-2.6.23`. A different version *connects fine* and
+is then refused audio by the mod's own protocol check, so the symptom is a player in the game
+hearing silence with no error anywhere. Drop the jar in the instance's `mods/` folder and press
+`V` in game for the audio settings.
+
+    https://www.curseforge.com/minecraft/mc-mods/simple-voice-chat/files/8807690
+    voicechat-forge-1.12.2-2.6.23.jar
+
+Not installing it is fine: the mod sets `acceptableRemoteVersions="*"`, so a player without it
+joins and plays exactly as before, just without voice. Do **not** set `force_voice_chat=true` —
+that throws away this property and starts rejecting those players.
+
+On the Host:
+
+```bash
+deploy/fetch-extra-mods.sh            # verify the SHA256 and install
+deploy/fetch-extra-mods.sh --check    # report only; exits 1 if missing or wrong
+deploy/fetch-extra-mods.sh --remove   # the back-out, one command
+sudo ufw allow 24454/udp              # compose publishes it; the firewall is a second door
+```
+
+Then restart the Game Server — a jar is only read at start. Prefer `/server restart` from the bot
+so players get the 30-second countdown.
+
+⚠ **`fetch-modpack.sh --force` does not clear `mods/`**, so these jars survive a pack upgrade,
+including one to a Minecraft version they do not support — where a stale jar stops the server
+booting. `fetch-extra-mods.sh` refuses to run when the two lock files disagree about the
+Minecraft version, but re-pin deliberately after any pack change.
+
+If voice connects but nobody can hear anyone, it is almost certainly `voice_host`: the apex is
+Cloudflare-proxied and does not carry UDP (ADR-0001), so packets aimed at it vanish silently.
+Check with `tcpdump -ni any udp port 24454` while somebody talks.
 
 **Check for config drift.** An overlay cannot see someone hand-editing a mod config on the
 Host. Runs daily at 05:30 Bangkok; run it by hand any time:
