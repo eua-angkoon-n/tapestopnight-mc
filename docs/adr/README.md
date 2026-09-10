@@ -19,6 +19,8 @@ future reader does not have to guess — especially where the code looks wrong o
 | [0012](./0012-heap-size-on-measured-host.md) | Run at `-Xmx7G` on the measured 12 GB Host (revised down from 8G after measuring) |
 | [0013](./0013-server-icon-in-postgres-resized-in-browser.md) | Server Icon bytes live in Postgres, and the resize happens in the browser |
 | [0014](./0014-bot-authorisation-surface.md) | The bot's authorisation surface: admin tiers, a fail-closed channel allowlist, GUARDED as `confirm: True` |
+| [0015](./0015-chat-bridge-via-log-tail.md) | The Chat Bridge tails the log and writes over RCON; milestones come from Better Questing, not advancements |
+| [0016](./0016-ip-account-linking.md) | Accounts link by IP address, with a typed code as the path many players will actually use |
 
 Three of these (0006, 0008, 0012) record a choice made **against** a recommendation. They say so, and
 they state the case for the option that was chosen — not the one that was rejected.

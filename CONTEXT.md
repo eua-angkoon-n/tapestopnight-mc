@@ -41,3 +41,17 @@ _Avoid_: healthcheck (that word is reserved for Docker's, which we deliberately 
 
 **Server Icon**: The source image an admin uploads. The 64×64 PNG derived from it for the
 Minecraft protocol is a Rendered Config artifact, not the Server Icon itself.
+
+**Chat Bridge**: The one path by which messages cross between the Game Server, the website and
+Discord. Every message becomes a row; the bot is the only process that moves rows onto the Game
+Server. See ADR-0015.
+_Avoid_: relay, webhook, integration
+
+**Milestone**: Something a player did that is worth announcing — read from Better Questing's
+progress file or the vanilla statistics file, never from an advancement, because this pack
+unloads the advancement system entirely.
+_Avoid_: achievement, advancement (both name a system that does not run here)
+
+**Player Link**: The recorded pairing of one Discord account with one Minecraft name. Made by
+address match or by a typed code, and required before anyone may speak from the website.
+_Avoid_: verification, whitelist, account

@@ -8,7 +8,8 @@
     "./config": "./src/config/index.ts",
     "./config/icon": "./src/config/icon.ts",
     "./control": "./src/control/index.ts",
-    "./auth": "./src/auth/index.ts"
+    "./auth": "./src/auth/index.ts",
+    "./bridge": "./src/bridge/index.ts"
   },
   "dependencies": {
     "drizzle-orm": "^0.38.2",

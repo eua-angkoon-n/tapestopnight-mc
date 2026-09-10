@@ -4,7 +4,7 @@ ledger.tapestopnight.com {
 	reverse_proxy 127.0.0.1:3001
 }
 
-# The public info pages and the admin config UI.
+# The public info pages, the admin config UI, and the Chat Bridge.
 #
 # The apex is Cloudflare-PROXIED, unlike ledger above. Minecraft reaches the
 # origin through the DNS-only mc. record plus an SRV record (ADR-0001), so the
@@ -12,5 +12,37 @@ ledger.tapestopnight.com {
 # through. Both use one domain.
 tapestopnight.com {
 	encode zstd gzip
-	reverse_proxy 127.0.0.1:3002
+
+	# ── ADR-0016: the visitor's real address ────────────────────────────────
+	#
+	# Account linking matches the address a browser arrives from against the
+	# address that player logged into the game from, so the web app has to know
+	# which address is genuinely the visitor's. Without this block it does not:
+	# every request reaches Caddy from a Cloudflare edge node, so the peer
+	# address is Cloudflare's and X-Forwarded-For's first entry is whatever the
+	# client chose to send — which anyone could set to a neighbour's address and
+	# be handed their identity.
+	#
+	# `trusted_proxies` is what makes CF-Connecting-IP believable: Caddy honours
+	# that header ONLY when the request actually came from one of these ranges.
+	#
+	# The list is Cloudflare's own, fetched 2026-09-10 from
+	# https://www.cloudflare.com/ips-v4 and /ips-v6. It CHANGES. Re-fetch it
+	# rather than copying this block forward, and do not type it from memory.
+	trusted_proxies static \
+		173.245.48.0/20 103.21.244.0/22 103.22.200.0/22 103.31.4.0/22 \
+		141.101.64.0/18 108.162.192.0/18 190.93.240.0/20 188.114.96.0/20 \
+		197.234.240.0/22 198.41.128.0/17 162.158.0.0/15 104.16.0.0/13 \
+		104.24.0.0/14 172.64.0.0/13 131.0.72.0/22 \
+		2400:cb00::/32 2606:4700::/32 2803:f800::/32 2405:b500::/32 \
+		2405:8100::/32 2a06:98c0::/29 2c0f:f248::/32
+	client_ip_headers CF-Connecting-IP
+
+	reverse_proxy 127.0.0.1:3002 {
+		# SET, not add. `header_up` replaces the header, so a client that sends
+		# its own X-Real-Client-IP has it overwritten before the app ever sees
+		# it. The app reads this one header and no other, and treats its absence
+		# as "no match" rather than falling back to something weaker.
+		header_up X-Real-Client-IP {client_ip}
+	}
 }

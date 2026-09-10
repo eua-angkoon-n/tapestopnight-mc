@@ -359,6 +359,22 @@ services:
       RESTART_COUNTDOWN_SECONDS: "30"
       TZ: Asia/Bangkok
 
+      # ── The Chat Bridge ───────────────────────────────────────────
+      # Both paths are inside the pack mount below, so the bridge adds no
+      # access this container did not already have. The world directory is
+      # DregoraRL and not `world` because that is what level-name says.
+      #
+      # Reading the log FILE rather than `docker logs` is deliberate: the
+      # container's stdout carries ANSI escapes from the pack's own colouring
+      # (measured: `> [K[10:13:35] ...`), and the file on disk is clean.
+      MC_LOG_PATH: /pack/logs/latest.log
+      MC_WORLD_DIR: /pack/DregoraRL
+      BRIDGE_POLL_MS: "2000"
+      # Each scan asks the Game Server to flush the world first, because Better
+      # Questing writes progress on save rather than on completion. Slow on
+      # purpose — this is not a hot path and the flush is not free.
+      MILESTONE_SCAN_MS: "60000"
+
     volumes:
       # ⚠ The same known privilege the web container carries, for the same
       # reason: /config apply renders server.properties and server-icon.png

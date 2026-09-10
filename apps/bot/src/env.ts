@@ -45,6 +45,26 @@ export const env = {
   },
 
   packDir: optional("PACK_DIR", "/pack"),
+
+  /**
+   * The Chat Bridge.
+   *
+   * Both paths are under PACK_DIR, which the bot already mounts for Apply, so
+   * the bridge adds no new access to the Host. `level-name=DregoraRL` is what
+   * makes the world directory that and not `world`.
+   */
+  bridge: {
+    logPath: optional("MC_LOG_PATH", `${optional("PACK_DIR", "/pack")}/logs/latest.log`),
+    worldDir: optional("MC_WORLD_DIR", `${optional("PACK_DIR", "/pack")}/DregoraRL`),
+    /** How often the log is read. Chat feels live at two seconds and costs nothing. */
+    pollMs: Number(optional("BRIDGE_POLL_MS", "2000")),
+    /**
+     * How often the milestone files are re-read. Deliberately slow: each scan
+     * asks the Game Server to flush the world to disk first, because Better
+     * Questing writes its progress on save rather than on completion.
+     */
+    scanMs: Number(optional("MILESTONE_SCAN_MS", "60000")),
+  },
   publicBaseUrl: optional("PUBLIC_BASE_URL", "https://tapestopnight.com"),
 
   /** Lead time before a restart actually happens. */

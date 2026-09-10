@@ -1,10 +1,12 @@
 import {
   boolean,
   customType,
+  index,
   integer,
   jsonb,
   pgEnum,
   pgTable,
+  primaryKey,
   serial,
   text,
   timestamp,
@@ -166,3 +168,157 @@ export const serverStatusCache = pgTable("server_status_cache", {
   containerState: text("container_state"),
   probedAt: timestamp("probed_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+/**
+ * ── The Chat Bridge ───────────────────────────────────────────────────────
+ *
+ * Where a message came from. The value decides which deliveries are already
+ * satisfied at insert time: a `game` row is by definition already in the game,
+ * a `discord` row is already in Discord. Nothing re-delivers a message to the
+ * place it came from, which is how the bridge avoids echoing itself.
+ */
+export const chatSource = pgEnum("chat_source", ["game", "web", "discord"]);
+
+/**
+ * Every message that crosses the bridge, in one table.
+ *
+ * One spine rather than three point-to-point paths. The Game Server is reached
+ * ONLY by the bot draining this table over RCON — the web app must never open
+ * an RCON connection inside a request, because `max-tick-time=-1` means OTG can
+ * legitimately block the main thread for minutes (README rule 3) and the chat
+ * box would hang indistinguishably from being broken.
+ */
+export const chatMessage = pgTable(
+  "chat_message",
+  {
+    id: serial("id").primaryKey(),
+    source: chatSource("source").notNull(),
+    /** Shown to everyone: the Minecraft name for game and web, the Discord display name otherwise. */
+    authorName: text("author_name").notNull(),
+    /** Discord snowflake. Text, not bigint: snowflakes exceed JS number safety. */
+    authorDiscordId: text("author_discord_id"),
+    body: text("body").notNull(),
+    deliveredToGame: boolean("delivered_to_game").notNull().default(false),
+    deliveredToDiscord: boolean("delivered_to_discord").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    // The web polls `?after=<id>`; the bot's drain loop scans for the two
+    // false flags. Both are the whole read pattern of this table.
+    index("chat_message_pending_idx").on(t.deliveredToGame, t.deliveredToDiscord),
+  ],
+);
+
+/**
+ * Which Discord channels the bridge uses — deliberately NOT `allowed_channel`.
+ *
+ * `allowed_channel` answers "where does the bot accept COMMANDS". This answers
+ * "which channel mirrors the game". Reusing one table for both would pour every
+ * in-game line into the admin command channel, which is the sort of mistake
+ * that is obvious in hindsight and invisible in a schema.
+ *
+ * Fails closed the same way: with no rows, nothing is mirrored anywhere.
+ */
+export const bridgeChannelKind = pgEnum("bridge_channel_kind", ["chat", "milestone"]);
+
+export const bridgeChannel = pgTable("bridge_channel", {
+  channelId: text("channel_id").primaryKey(),
+  kind: bridgeChannelKind("kind").notNull(),
+  note: text("note"),
+  /** When false the row is kept for the record but stops being used. */
+  enabled: boolean("enabled").notNull().default(true),
+});
+
+/**
+ * Discord account ↔ Minecraft name.
+ *
+ * `discordId` is unique as well as `mcName` being the key: one person, one
+ * character. Re-linking is a delete then an insert, never two live rows, so
+ * "who is this message from" always has exactly one answer.
+ *
+ * → ADR-0016 for why IP matching is the primary path and what it cannot do.
+ */
+export const linkVia = pgEnum("link_via", ["ip", "code"]);
+
+export const playerLink = pgTable("player_link", {
+  mcName: text("mc_name").primaryKey(),
+  discordId: text("discord_id").notNull().unique(),
+  linkedVia: linkVia("linked_via").notNull(),
+  linkedAt: timestamp("linked_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/**
+ * Addresses seen logging in, harvested from the Game Server log.
+ *
+ * Kept per (name, address) rather than one row per player because the whole
+ * point is to notice when ONE address has produced TWO names — a shared house
+ * or a CGNAT pool — which is exactly the case where an automatic link would
+ * link the wrong person and must refuse.
+ */
+export const playerIpSeen = pgTable(
+  "player_ip_seen",
+  {
+    mcName: text("mc_name").notNull(),
+    ip: text("ip").notNull(),
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.mcName, t.ip] }), index("player_ip_seen_ip_idx").on(t.ip)],
+);
+
+/**
+ * The fallback when an address cannot decide: a short code shown on the website
+ * and typed in game as `!link <code>`.
+ *
+ * Not a nicety. A player whose browser reaches the site over IPv6 while the
+ * game connects over IPv4 — normal on Thai consumer ISPs — will never match by
+ * address, and the website gates posting on being linked. Without this path
+ * those players simply could not speak. → ADR-0016
+ */
+export const linkCode = pgTable("link_code", {
+  code: text("code").primaryKey(),
+  discordId: text("discord_id").notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+});
+
+/**
+ * What has already been announced.
+ *
+ * Milestones are discovered by DIFFING files the Game Server writes, so a
+ * restart, a re-scan, or a world reload would re-discover everything that ever
+ * happened. This table is what makes "congratulations" a one-time event rather
+ * than a function of how often the bot restarted.
+ *
+ * `kind` is the source of truth kind ("quest", "kill"), `key` the identifier
+ * within it (a quest id, an entity id).
+ */
+export const playerMilestone = pgTable(
+  "player_milestone",
+  {
+    mcName: text("mc_name").notNull(),
+    kind: text("kind").notNull(),
+    key: text("key").notNull(),
+    detail: text("detail"),
+    recordedAt: timestamp("recorded_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.mcName, t.kind, t.key] })],
+);
+
+/**
+ * The curated answer to "which of these is worth interrupting people for".
+ *
+ * Dregora has 403 quests and the stats file counts every entity ever killed;
+ * announcing all of it would be noise nobody reads. Policy, therefore seeded
+ * as source in db/seed/ rather than typed into a table by hand — the same
+ * reasoning that makes the Edit Tiers a seed file.
+ */
+export const notableMilestone = pgTable(
+  "notable_milestone",
+  {
+    kind: text("kind").notNull(),
+    key: text("key").notNull(),
+    /** What Discord is told, in Thai. The pack ships no server-side translations. */
+    label: text("label").notNull(),
+    enabled: boolean("enabled").notNull().default(true),
+  },
+  (t) => [primaryKey({ columns: [t.kind, t.key] })],
+);
