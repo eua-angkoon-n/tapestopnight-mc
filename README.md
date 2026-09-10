@@ -93,6 +93,53 @@ same application, that also breaks the website's admin check. The bot clears sta
 commands on boot so DISCO NIGHT's do not linger.
 → [ADR-0008](./docs/adr/0008-reuse-discord-application.md)
 
+**Turn on the Chat Bridge.** In-game chat, the website's chat page and a Discord channel are
+one bridge (ADR-0015). Three things have to be true before it says anything:
+
+1. **`MessageContent` is enabled** for the application in the Discord Developer Portal. It is a
+   privileged intent; without it the gateway refuses the connection outright. ⚠ ADR-0008 — this
+   application is still DISCO NIGHT's, so **rotate the token before widening what it can read**.
+2. **The channels are named.** Like `allowed_channel` this fails closed, and for the same reason
+   it is a separate table: `allowed_channel` says where the bot takes *commands*, this says which
+   channel mirrors the *game*.
+
+   ```sql
+   INSERT INTO bridge_channel (channel_id, kind, note) VALUES
+     ('<channel id>', 'chat',      'ห้องแชทเชื่อมเกม'),
+     ('<channel id>', 'milestone', 'ห้องประกาศความสำเร็จ');
+   ```
+
+   The key is `(channel_id, kind)`, so **the same channel may take both** — which
+   is how this server runs it. The bot ignores its own messages, so its
+   congratulations do not come back as chat.
+
+   The bot has no guild-wide permissions on purpose; it is granted per channel.
+   A new channel must give the bot's role **View Channel** and **Send Messages**
+   or the bridge is silent with nothing anywhere saying why.
+3. **The milestone allowlist is seeded**, or nothing is ever worth announcing:
+
+   ```bash
+   docker exec -i tapestopnight-db psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"      < db/seed/0002-milestones.sql
+   ```
+
+The parser is tested against log lines captured from this Host, with no token, database or game
+server needed:
+
+```bash
+npm run bridge:check
+```
+
+**Account linking needs Caddy configured.** The website matches a visitor's address against the
+address that player logged in from, and it can only do that if Caddy tells it the real one — the
+apex is Cloudflare-proxied, so out of the box every request appears to come from Cloudflare. The
+`trusted_proxies` + `header_up X-Real-Client-IP` block in
+[`deploy/caddy/Caddyfile`](./deploy/caddy/Caddyfile) is what makes it believable, and the
+Cloudflare ranges in it **change** — re-fetch, never copy forward.
+
+Expect the address match to fail for a good share of players: the game is IPv4-only while the
+website has AAAA records, and two people in one house cannot be told apart. That is why `!link`
+exists, and why it is built to be as smooth as the automatic path. → ADR-0016
+
 **Check for config drift.** An overlay cannot see someone hand-editing a mod config on the
 Host. Runs daily at 05:30 Bangkok; run it by hand any time:
 

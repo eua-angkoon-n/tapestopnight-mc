@@ -65,3 +65,19 @@ export async function say(opts: RconOptions, message: string): Promise<void> {
 export async function requestStop(opts: RconOptions): Promise<void> {
   await withRcon(opts, (run) => run("stop"));
 }
+
+/**
+ * Put one bridged message in front of everyone in the game.
+ *
+ * `tellraw`, not `say`, for two measured reasons. `say` from an RCON
+ * connection renders as `[Rcon] …` in front of players, which tells them
+ * nothing true about who spoke. And `say` is echoed back into the server log,
+ * where the bridge's own log reader would find it — `tellraw` prints nothing
+ * to the log at all, so a message cannot make a round trip.
+ *
+ * The command itself is built by `tellrawCommand` in core/bridge, which is
+ * where the escaping lives. Do not assemble one here.
+ */
+export async function broadcast(opts: RconOptions, command: string): Promise<void> {
+  await withRcon(opts, (run) => run(command));
+}

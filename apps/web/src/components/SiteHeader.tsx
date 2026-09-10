@@ -25,6 +25,7 @@ import { auth, signIn, signOut } from "@/auth";
  */
 const SECTIONS = [
   { href: "/#home", label: "หน้าแรก" },
+  { href: "/chat", label: "แชท" },
   { href: "/#wiki", label: "Wiki" },
   { href: "/#about", label: "เกี่ยวกับ" },
 ] as const;

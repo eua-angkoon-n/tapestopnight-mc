@@ -38,6 +38,7 @@ import {
   handleInfoModpack,
 } from "./handlers/info.ts";
 import { handlePlayersList } from "./handlers/players.ts";
+import { startBridge } from "./bridge/run.ts";
 import { handleRestart, handleStart, handleStatus, handleStop } from "./handlers/server.ts";
 
 const { db, sql } = createDb();
@@ -47,11 +48,28 @@ function log(...parts: unknown[]) {
 }
 
 /**
- * Only Guilds. No privileged intents are requested, and none are needed: an
- * interaction already carries the caller's roles, so unlike the web app the
- * bot never has to ask Discord who someone is.
+ * Guilds for the command tree, and GuildMessages + MessageContent for the Chat
+ * Bridge.
+ *
+ * The command tree needs neither of the last two — an interaction already
+ * carries the caller's roles. The bridge does: relaying what someone typed in a
+ * Discord channel into the game is not possible without being allowed to read
+ * what they typed, and MessageContent is a PRIVILEGED intent that has to be
+ * switched on in the Discord Developer Portal before the gateway will accept
+ * this connection at all.
+ *
+ * ⚠ ADR-0008: this application is shared with DISCO NIGHT and its token is
+ * still the one that was meant to be rotated. Turning on MessageContent widens
+ * what that application can read across every channel it is in, so rotate the
+ * token first rather than after.
  */
-const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+const client = new Client({
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent,
+  ],
+});
 
 async function route(
   interaction: ChatInputCommandInteraction,
@@ -170,8 +188,14 @@ client.on(Events.InteractionCreate, async (interaction: Interaction) => {
   await onCommand(interaction);
 });
 
+let stopBridge: (() => void) | null = null;
+
 client.once(Events.ClientReady, (ready) => {
   log(`connected as ${ready.user.tag}`);
+  // Started here rather than before login: the bridge posts to Discord, and a
+  // channel fetch before the gateway is ready fails in a way that looks like a
+  // misconfigured channel id rather than a race.
+  stopBridge = startBridge(client, db);
 });
 
 /*
@@ -196,6 +220,7 @@ await client.login(env.token);
 for (const signal of ["SIGTERM", "SIGINT"] as const) {
   process.on(signal, () => {
     log(`${signal} — shutting down`);
+    stopBridge?.();
     void client.destroy().then(() => sql.end());
   });
 }
