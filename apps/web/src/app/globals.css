@@ -469,7 +469,9 @@ kbd,
   position: absolute;
   inset: 0;
   z-index: 0;
-  background-image: url("/media/homestead-hero.webp");
+  /* background-image is set inline by the page, which can read the file's
+     mtime and append it — a stylesheet cannot, and the picture would be
+     cached under an unchanging name. See apps/web/src/lib/media.ts. */
   background-size: cover;
   background-position: center;
 }
