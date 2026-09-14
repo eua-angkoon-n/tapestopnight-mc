@@ -64,7 +64,7 @@ function StatusPill({ status }: { status: StatusView }) {
         padding: "0.35rem 0.8rem",
         borderRadius: 999,
         border: `1px solid ${online ? "var(--ok)" : "var(--border-strong)"}`,
-        background: online ? "rgba(78,139,87,0.12)" : "var(--surface)",
+        background: online ? "var(--ok-wash)" : "var(--surface)",
         fontSize: "0.92rem",
         lineHeight: 1.3,
       }}

@@ -36,7 +36,7 @@ export function ApplyButton({ pendingCount }: { pendingCount: number }) {
             แล้ว <strong>รีสตาร์ทเซิร์ฟเวอร์</strong> — ผู้เล่นที่อยู่ในเกมจะหลุดออก
           </p>
           <p className="faint" style={{ margin: "0 0 0.8rem", fontSize: "0.85rem" }}>
-            การเซฟโลก OTG ขนาดใหญ่ใช้เวลาหลายนาที ระบบรออยู่แล้วไม่ตัดกลางทาง
+            การเซฟโลกขนาดใหญ่ใช้เวลาหลายนาที ระบบรออยู่แล้วไม่ตัดกลางทาง
           </p>
           <div style={{ display: "flex", gap: "0.5rem" }}>
             <button type="button" className="btn btn-primary" onClick={go} disabled={pending}>

@@ -126,7 +126,7 @@ export async function linkAccount(): Promise<ActionResult> {
  *
  * Writes a row and stops. The bot drains it to the Game Server over RCON —
  * this must never open an RCON connection itself, because `max-tick-time=-1`
- * lets OTG block the server's main thread for minutes and the visitor would
+ * lets chunk generation block the server's main thread for minutes and the visitor would
  * watch a request hang with no way to tell that from a broken site.
  *
  * Being linked is re-checked HERE and not only in the page that renders the

@@ -38,8 +38,8 @@ export default async function HomePage() {
 
   const address = info?.serverAddress ?? "tapestopnight.com";
   const version = info
-    ? `Minecraft ${info.minecraftVersion} · Forge ${info.forgeVersion}`
-    : "Minecraft 1.12.2 · Forge";
+    ? `Minecraft ${info.minecraftVersion} · ${info.loaderName} ${info.loaderVersion}`
+    : "Minecraft 1.20.1 · Fabric";
 
   return (
     <main>
@@ -63,11 +63,11 @@ export default async function HomePage() {
           loop
           playsInline
           preload="metadata"
-          poster="/media/dregora-poster.jpg"
+          poster="/media/homestead-poster.jpg"
           aria-hidden="true"
           tabIndex={-1}
         >
-          <source src="/media/dregora.mp4" type="video/mp4" />
+          <source src="/media/homestead.mp4" type="video/mp4" />
         </video>
         <div className="scrim" />
 
@@ -121,7 +121,7 @@ export default async function HomePage() {
             }}
           >
             <p style={{ margin: 0, fontSize: "clamp(1.05rem, 2.4vw, 1.4rem)" }}>
-              {info?.modpackName ?? "RLCraft Dregora"}
+              {info?.modpackName ?? "Homestead"}
             </p>
             <LiveStatus
               initial={{
@@ -188,21 +188,23 @@ export default async function HomePage() {
                 Wiki
               </h2>
               <p className="muted" style={{ margin: "0.4rem 0 0", maxWidth: "44rem" }}>
-                คู่มือ RLCraft Dregora
+                คู่มือ Homestead โดย Cozy Studios
               </p>
             </div>
             {/*
               Always visible, never conditional.
 
-              wiki.gg is somebody else's site. The day they add an
-              X-Frame-Options header this frame becomes a silent blank box, and
-              a cross-origin iframe that has been refused cannot be detected
-              from JavaScript. A link that is always there is the only thing
-              that keeps this section useful on that day.
+              cozystudios.org is somebody else's site. It serves from GitHub
+              Pages today, which sends neither X-Frame-Options nor a CSP
+              frame-ancestors, so the embed works — but the day they add either
+              this frame becomes a silent blank box, and a cross-origin iframe
+              that has been refused cannot be detected from JavaScript. A link
+              that is always there is the only thing that keeps this section
+              useful on that day.
             */}
             {info?.wikiUrl ? (
               <a className="btn" href={info.wikiUrl} target="_blank" rel="noopener noreferrer">
-                เปิดใน wiki.gg ↗
+                เปิดใน cozystudios.org ↗
               </a>
             ) : null}
           </header>
@@ -211,7 +213,7 @@ export default async function HomePage() {
             <div className="frame-panel">
               <iframe
                 src={info.wikiUrl}
-                title="RLCraft Dregora Wiki"
+                title="Homestead Wiki"
                 loading="lazy"
                 referrerPolicy="no-referrer-when-downgrade"
                 /* Nearly the whole viewport. dvh, not vh: on mobile the
