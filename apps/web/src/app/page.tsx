@@ -1,6 +1,7 @@
 import { CopyAddress } from "@/components/CopyAddress";
 import { LiveStatus } from "@/components/LiveStatus";
 import { isStale, loadPublicData, thaiAgo } from "@/lib/data";
+import { mediaUrl } from "@/lib/media";
 
 /** Always rendered fresh: the status strip must not be served from a build. */
 export const dynamic = "force-dynamic";
@@ -44,9 +45,19 @@ export default async function HomePage() {
     <main>
       {/* ── 1. Hero ─────────────────────────────────────────────── */}
       <section id="home" className="section-tall">
-        {/* A still, not a loop. See .media-still in globals.css for what this
-            replaced and why none of it is missed. */}
-        <div className="media-still" aria-hidden="true" />
+        {/*
+          A still, not a loop — see .media-still in globals.css for what this
+          replaced and why none of it is missed.
+
+          The image is set here rather than in the stylesheet because a
+          stylesheet cannot know the file's mtime, and without that the picture
+          is cached under a name that never changes. See lib/media.ts.
+        */}
+        <div
+          className="media-still"
+          style={{ backgroundImage: `url("${mediaUrl("homestead-hero.webp")}")` }}
+          aria-hidden="true"
+        />
         <div className="scrim" />
 
         <div
@@ -254,7 +265,7 @@ export default async function HomePage() {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               className="card-media"
-              src="/media/about.webp"
+              src={mediaUrl("about.webp")}
               alt=""
               loading="lazy"
               decoding="async"
