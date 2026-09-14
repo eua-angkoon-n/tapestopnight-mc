@@ -45,12 +45,16 @@ services:
       EULA: "TRUE"
       TYPE: FABRIC
       VERSION: "1.20.1"
-      # Matches LOADER_VERSION in modpack.lock, which came from the pack's own
-      # variables.txt (MODLOADER_VERSION=0.18.4). Left unset, the image installs
-      # the newest loader — which usually works, and "usually" is how a box
-      # stops being reproducible. Required rather than defaulted, so the two
-      # cannot drift apart silently.
-      FABRIC_LOADER_VERSION: ${FABRIC_LOADER_VERSION:?set FABRIC_LOADER_VERSION in deploy/.env to match LOADER_VERSION in modpack.lock (0.18.4)}
+      # Matches LOADER_VERSION in deploy/modpack.lock, which came from the
+      # pack's own variables.txt (MODLOADER_VERSION=0.18.4). Left unset, the
+      # image installs the newest loader — which usually works, and "usually"
+      # is how a box stops being reproducible.
+      #
+      # Written here rather than required from deploy/.env, alongside VERSION
+      # which is also a literal. That file holds secrets, and a loader version
+      # is not one; putting it there would have made a version bump a reason to
+      # open the one file on this Host that nothing is allowed to read.
+      FABRIC_LOADER_VERSION: "0.18.4"
       TZ: Asia/Bangkok
 
       # ── ADR-0002 / ADR-0005 ───────────────────────────────────────
