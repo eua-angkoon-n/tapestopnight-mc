@@ -31,12 +31,32 @@ if (original.size === 0) {
   process.exit(2);
 }
 
-const rendered = renderProperties([...original].map(([key, value]) => ({ key, value })));
+/*
+  Secret keys are excluded from the round trip, and the exclusion is the point
+  rather than a concession.
+
+  `rcon.password` is in SECRET_KEYS, so the renderer drops any stored row for
+  it and takes the value from the environment instead — that is the whole
+  design (ADR-0002), and it means a secret key CANNOT round-trip through the
+  database by construction. Homestead's server.properties ships the key with an
+  empty value; Dregora's did not, which is the only reason this check passed
+  without the carve-out until now.
+
+  Comparing it anyway would report MISSING for a renderer behaving exactly as
+  specified, and the fix somebody reached for under time pressure would be to
+  delete the line from the fixture — quietly ending the guarantee that the
+  fixture is the pack's file verbatim. The secret path has its own assertions
+  further down, which are stricter than this one.
+*/
+const SECRET_IN_FIXTURE = new Set(["rcon.password"]);
+
+const renderable = [...original].filter(([key]) => !SECRET_IN_FIXTURE.has(key));
+const rendered = renderProperties(renderable.map(([key, value]) => ({ key, value })));
 const roundTripped = parseProperties(rendered);
 
 const problems: string[] = [];
 
-for (const [key, value] of original) {
+for (const [key, value] of renderable) {
   if (!roundTripped.has(key)) {
     problems.push(`MISSING   ${key}`);
   } else if (roundTripped.get(key) !== value) {
@@ -47,6 +67,13 @@ for (const key of roundTripped.keys()) {
   if (!original.has(key)) problems.push(`INVENTED  ${key}`);
 }
 
+// The carve-out must stay a carve-out: if the renderer ever DID emit a secret
+// from a stored row, skipping the comparison above would hide it. Assert the
+// absence directly.
+for (const key of SECRET_IN_FIXTURE) {
+  if (roundTripped.has(key)) problems.push(`SECRET    ${key} was rendered from a stored row`);
+}
+
 // The banner is the only thing allowed to be new, and it must be present:
 // without it a future admin has no warning that hand edits are discarded.
 const hasBanner = rendered.includes("GENERATED FILE - DO NOT EDIT");
@@ -54,7 +81,7 @@ if (!hasBanner) problems.push("MISSING   the GENERATED banner (ADR-0002 requires
 
 // Rendering identical input twice must produce identical output, or diffs
 // between renders become unreadable.
-if (renderProperties([...original].map(([key, value]) => ({ key, value }))) !== rendered) {
+if (renderProperties(renderable.map(([key, value]) => ({ key, value }))) !== rendered) {
   problems.push("UNSTABLE  renderer is not deterministic");
 }
 
@@ -78,7 +105,7 @@ const AWKWARD: Record<string, string> = {
   // rule escaped `§` to `\\u00A7`, Java read a literal backslash followed by
   // u00A7, and the MOTD displayed the escape sequence instead of a colour.
   "motd-section": "§6§lfrom the§8§l §mdepths§r §6§lof the §4§l§onether",
-  "motd-thai": "เซิร์ฟเวอร์ RLCraft Dregora",
+  "motd-thai": "เซิร์ฟเวอร์ Homestead",
   // Astral plane: Java wants a surrogate pair as two escapes, which is how a
   // JS string already holds it.
   "motd-astral": "boss 🐉 down",
@@ -139,7 +166,12 @@ if (parseProperties(renderProperties([{ key: "rcon.password", value: "x" }])).ha
 console.log(`source   : ${path}`);
 console.log(`escaping : ${Object.keys(AWKWARD).length} awkward values round-tripped`);
 console.log(`secrets  : rcon.password injected; stored row ignored`);
-console.log(`keys     : ${original.size} in, ${roundTripped.size} out`);
+console.log(
+  `keys     : ${original.size} in, ${roundTripped.size} out` +
+    (original.size !== renderable.length
+      ? ` (${original.size - renderable.length} secret held back — see SECRET_IN_FIXTURE)`
+      : ""),
+);
 console.log(`banner   : ${hasBanner ? "present" : "ABSENT"}`);
 console.log(`comment lines added: ${rendered.split("\n").filter((l) => l.startsWith("#")).length}`);
 

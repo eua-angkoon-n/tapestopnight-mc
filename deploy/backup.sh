@@ -23,7 +23,7 @@ set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BACKUP_ROOT="${BACKUP_ROOT:-/srv/mc/backups}"
 PACK_DIR="${PACK_DIR:-/srv/mc/pack}"
-LEVEL_NAME="${LEVEL_NAME:-DregoraRL}"
+LEVEL_NAME="${LEVEL_NAME:-Homestead}"
 MC_CONTAINER="${MC_CONTAINER:-tapestopnight-mc}"
 DB_CONTAINER="${DB_CONTAINER:-tapestopnight-db}"
 
@@ -71,24 +71,41 @@ backup_world() {
   local running=0
   docker inspect -f '{{.State.Running}}' "${MC_CONTAINER}" 2>/dev/null | grep -q true && running=1
 
-  # ── Do not do this in the middle of a pre-generation ──────────────
-  #
-  # save-off during pregen does not pause the generator; it only stops the
-  # chunks it produces from reaching disk, so they queue in the heap instead.
-  # Pregen already runs the JVM near its cgroup limit (ADR-0012), and the OOM
-  # killer picks the largest process, which is the game server. Trading a
-  # night's backup for an OOM kill mid-generation is the wrong way round —
-  # especially as the world before pregen is already archived, and pregenerated
-  # terrain is reproducible by re-running the pregen.
-  if [ "${running}" = "1" ] && docker exec "${MC_CONTAINER}" rcon-cli "pregen info ShowTaskList" 2>/dev/null | grep -qiE "[1-9][0-9]* Tasks"; then
-    log "SKIPPING the world backup: a pre-generation is running."
-    log "  save-off would queue generated chunks in the heap next to a JVM"
-    log "  already near its limit. The Postgres backup still ran."
-    log "  Run 'deploy/backup.sh world' once pregen finishes."
-    return 0
-  fi
-
   if [ "${running}" = "1" ]; then
+    # ── Can we even talk to the server? ─────────────────────────────
+    #
+    # Asked FIRST and separately, because the two checks below both depend on
+    # it and a silent "no answer" reads exactly like "no problem". On
+    # 2026-09-10 RCON was unreachable at 03:00: the pregen check found no
+    # output and so did not trip, the backup went ahead, and it died at
+    # save-all flush with a connection-reset stack trace. Skipping with a
+    # clear reason beats failing obscurely three steps later — and without a
+    # flush there is nothing safe to archive anyway.
+    if ! docker exec "${MC_CONTAINER}" rcon-cli list >/dev/null 2>&1; then
+      log "SKIPPING the world backup: the server is running but RCON does not answer."
+      log "  Saves cannot be flushed or paused, so any archive taken now would be"
+      log "  a torn copy. The Postgres backup still ran."
+      return 0
+    fi
+
+    # ── Do not do this in the middle of a pre-generation ────────────
+    #
+    # save-off during pregen does not pause the generator; it only stops the
+    # chunks it produces from reaching disk, so they queue in the heap
+    # instead. Pregen already runs the JVM near its cgroup limit (ADR-0018),
+    # and the OOM killer picks the largest process, which is the game server.
+    # Trading a night's backup for an OOM kill mid-generation is the wrong way
+    # round — especially as the pre-pregen world is already archived and
+    # pregenerated terrain can simply be regenerated.
+    if docker exec "${MC_CONTAINER}" rcon-cli "pregen info ShowTaskList" 2>/dev/null \
+         | grep -qiE "[1-9][0-9]* Tasks"; then
+      log "SKIPPING the world backup: a pre-generation is running."
+      log "  save-off would queue generated chunks in the heap next to a JVM"
+      log "  already near its limit. The Postgres backup still ran."
+      log "  Run 'deploy/backup.sh world' once pregen finishes."
+      return 0
+    fi
+
     log "pausing saves and flushing"
     trap saves_on EXIT
     docker exec "${MC_CONTAINER}" rcon-cli save-off >/dev/null || die "save-off"
@@ -100,7 +117,28 @@ backup_world() {
   fi
 
   log "archiving ${PACK_DIR}/${LEVEL_NAME} -> ${out}"
-  tar -C "${PACK_DIR}" -czf "${out}" "${LEVEL_NAME}" || die "tar"
+  # tar's exit codes are not pass/fail:
+  #   0  fine
+  #   1  "some files differ" — a WARNING. The archive IS written.
+  #   2  fatal.
+  #
+  # `|| die` treated 1 as fatal, which failed every nightly world backup:
+  # save-off stops periodic world saves but not every write, so a 2.9 GB world
+  # reliably produces "file changed as we read it" and exit 1. The 2.29 GB
+  # archive from 2026-09-11 was reported FAILED and was perfectly good — 472
+  # region files and a readable level.dat.
+  #
+  # Reporting a healthy backup as broken is its own hazard: it teaches whoever
+  # reads the log to ignore the word FAILED. So exit 1 is a warning, 2+ is
+  # fatal, and `tar -tzf` below stays the real gate on usability.
+  local tar_status=0
+  tar -C "${PACK_DIR}" -czf "${out}" "${LEVEL_NAME}" || tar_status=$?
+  if [ "${tar_status}" -ge 2 ]; then
+    die "tar failed with exit ${tar_status}"
+  elif [ "${tar_status}" -eq 1 ]; then
+    log "  note: tar reported files changing during the read (exit 1)."
+    log "  Expected on a live world; the archive is verified below."
+  fi
 
   if [ "${running}" = "1" ]; then
     saves_on

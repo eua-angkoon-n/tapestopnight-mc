@@ -42,7 +42,12 @@ set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO="$(cd "${HERE}/.." && pwd)"
 PACK_DIR="${PACK_DIR:-/srv/mc/pack}"
-ZIP_PATH="${ZIP_PATH:-/srv/mc/dist/dregora-v1.1.2b-serverpack.zip}"
+# shellcheck source=modpack.lock
+source "${HERE}/modpack.lock"
+# Built from the pin rather than written out, so --vs-pack cannot end up
+# comparing against the previous pack's zip after an upgrade. That is not
+# hypothetical: this line said "dregora-v1.1.2b" while the lock said Homestead.
+ZIP_PATH="${ZIP_PATH:-/srv/mc/dist/homestead-${MODPACK_VERSION}-serverpack.zip}"
 STATE_DIR="${STATE_DIR:-/srv/mc/state}"
 BASELINE="${STATE_DIR}/drift-baseline.sha256"
 

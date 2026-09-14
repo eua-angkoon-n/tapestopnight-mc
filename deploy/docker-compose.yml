@@ -7,9 +7,13 @@ name: tapestopnight-mc
 
 services:
   mc:
-    # java8, not latest. Forge 14.23.5 / MC 1.12.2 requires Java 8 (ADR-0005);
-    # the image ships Temurin 1.8.0_312.
-    image: itzg/minecraft-server:java8
+    # java17, not java8. Homestead's own variables.txt says
+    # RECOMMENDED_JAVA_VERSION=17, and that is the number that wins here.
+    # 21 almost certainly works and was the first choice; "almost certainly" is
+    # how a 307-mod pack produces a mixin crash that names a mod rather than
+    # the JRE, and nobody debugging at 23:00 starts by suspecting the JDK.
+    # → ADR-0005, ADR-0018
+    image: itzg/minecraft-server:java17
     container_name: tapestopnight-mc
     restart: unless-stopped
     stdin_open: true
@@ -33,14 +37,20 @@ services:
 
     volumes:
       # The pack materialised by deploy/fetch-modpack.sh from the pinned
-      # SHA256. Forge installs itself in here on first boot.
+      # SHA256. The Fabric server launcher installs itself in here on first
+      # boot, the same way the Forge installer used to.
       - /srv/mc/pack:/data
 
     environment:
       EULA: "TRUE"
-      TYPE: FORGE
-      VERSION: "1.12.2"
-      FORGE_VERSION: "14.23.5.2860"
+      TYPE: FABRIC
+      VERSION: "1.20.1"
+      # Matches LOADER_VERSION in modpack.lock, which came from the pack's own
+      # variables.txt (MODLOADER_VERSION=0.18.4). Left unset, the image installs
+      # the newest loader — which usually works, and "usually" is how a box
+      # stops being reproducible. Required rather than defaulted, so the two
+      # cannot drift apart silently.
+      FABRIC_LOADER_VERSION: ${FABRIC_LOADER_VERSION:?set FABRIC_LOADER_VERSION in deploy/.env to match LOADER_VERSION in modpack.lock (0.18.4)}
       TZ: Asia/Bangkok
 
       # ── ADR-0002 / ADR-0005 ───────────────────────────────────────
@@ -49,39 +59,52 @@ services:
       # No server.properties-shaped env var may be added to this service.
       SKIP_SERVER_PROPERTIES: "true"
 
-      # ── ADR-0012 ──────────────────────────────────────────────────
-      # 8G is deliberate and near this Host's limit. USE_AIKAR_FLAGS is the
-      # mitigation, not a nice-to-have: verified against the image, MEMORY
-      # under 12g selects Aikar's standard branch, which sets
-      # InitiatingHeapOccupancyPercent=15 (starts concurrent marking early so
-      # G1 reclaims incrementally instead of falling back to a single-threaded
-      # full GC — Java 8 has no parallel full GC, that arrived in JDK 10) and
-      # -XX:+AlwaysPreTouch (keeps the whole heap resident so it is never the
-      # thing that swaps). Do not remove either.
-      # 8G was tried first and measured 9.04 GiB RSS with zero players — 90.4%
-      # of mem_limit, leaving ~500 MB for metaspace and G1 structures to grow
-      # into once players connect. 7G measures ~8.0-8.5 GiB and restores real
-      # headroom. See the "Revised after measurement" note in ADR-0012.
-      MEMORY: "7G"
+      # ── heap ──────────────────────────────────────────────────────
+      # 8G, chosen by the operator, and NOT YET MEASURED on this pack.
+      #
+      # ADR-0012 settled on 7G, and it settled it by measuring Forge 1.12.2 on
+      # Java 8 — a runtime this service no longer uses. Java 17's G1 has a
+      # parallel full GC (JDK 10), and Fabric with Lithium and C2ME holds far
+      # less per chunk than Forge did, so the old figure is a poor predictor in
+      # both directions and neither 7G nor 8G can be justified from it.
+      #
+      # Homestead's own docs ask for 8-12 GB. This Host has 12 GB in total and
+      # shares it, so 8G is the top of what is available rather than a
+      # comfortable middle. Measure RSS once it is up and idle; above ~9.6 GiB
+      # (96% of mem_limit) drop back to 7G rather than waiting for the OOM
+      # killer to pick the JVM with players connected.
+      #
+      # USE_AIKAR_FLAGS stays on and is still the mitigation, not decoration:
+      # under 12g it selects Aikar's standard branch, which sets
+      # InitiatingHeapOccupancyPercent=15 (concurrent marking starts early, so
+      # G1 reclaims incrementally instead of falling back to a full GC) and
+      # -XX:+AlwaysPreTouch (the heap stays resident, so it is never the thing
+      # that swaps). Do not remove either.
+      MEMORY: "8G"
       USE_AIKAR_FLAGS: "true"
 
-      # Measure the pauses instead of arguing about them (ADR-0012).
-      # PrintGCApplicationStoppedTime is the number that matters: total time
-      # the world was frozen, which is what a player actually experiences.
-      # NOTE: /data/logs must EXIST before the JVM starts. Java 8 opens the GC
-      # log at startup and, if the directory is missing, prints
-      #   "Cannot open file /data/logs/gc.log due to No such file or directory"
-      # and carries on with no GC logging at all. The pack ships no logs/
-      # directory and log4j creates it ~55s into boot, which is far too late.
-      # deploy/prepare-host.sh creates it up front.
+      # Measure the pauses instead of arguing about them.
+      #
+      # This is the unified-logging (-Xlog) spelling of what used to be here.
+      # The old flags were not merely deprecated on Java 17: -Xloggc,
+      # -XX:+PrintGCDetails, -XX:+UseGCLogFileRotation, -XX:NumberOfGCLogFiles
+      # and -XX:GCLogFileSize were REMOVED in JDK 16, and a JVM started with
+      # them refuses to boot rather than warning. Carrying the Dregora block
+      # forward would have produced a container that exits immediately on an
+      # "Unrecognized VM option" line, with no Minecraft output at all to say
+      # why.
+      #
+      # `safepoint` replaces PrintGCApplicationStoppedTime, and it is the
+      # number that matters: total time the world was frozen, which is what a
+      # player actually experiences.
+      #
+      # NOTE: /data/logs must EXIST before the JVM starts. The JVM opens the
+      # log at startup and, if the directory is missing, carries on with no GC
+      # logging at all. The pack ships no logs/ directory and log4j creates it
+      # well into boot, far too late. deploy/prepare-host.sh creates it up
+      # front — still required, for the same reason as before.
       JVM_OPTS: >-
-        -Xloggc:/data/logs/gc.log
-        -XX:+PrintGCDetails
-        -XX:+PrintGCDateStamps
-        -XX:+PrintGCApplicationStoppedTime
-        -XX:+UseGCLogFileRotation
-        -XX:NumberOfGCLogFiles=5
-        -XX:GCLogFileSize=10M
+        -Xlog:gc*,safepoint:file=/data/logs/gc.log:time,uptime,level,tags:filecount=5,filesize=10M
 
       # ── RCON ──────────────────────────────────────────────────────
       # Used by the image for graceful shutdown, and later by the bot and the
@@ -95,22 +118,32 @@ services:
 
     # ── ADR-0005: no healthcheck ────────────────────────────────────
     # The image ships one by default (mc-health, 30s interval, 120s start
-    # period, 2 retries). It must be off: max-tick-time=-1 is mandatory for
-    # this pack because OTG structure generation legitimately blocks the main
-    # thread for minutes, and first boot exceeds the start period outright. A
-    # healthcheck here reports a healthy server as failed.
+    # period, 2 retries). It stays off.
+    #
+    # The original reason was OpenTerrainGenerator, which Homestead does not
+    # have — but the conclusion outlives the reason. First boot of a 374-mod
+    # pack exceeds the 120s start period outright, and Homestead builds terrain
+    # through Tectonic and TerraBlender, which still stalls long enough to fail
+    # a 30s probe under load. What a healthcheck buys is an automatic restart;
+    # what it costs is that restart arriving mid chunk-write. That trade was
+    # bad on Dregora and it is bad here.
     healthcheck:
       disable: true
 
-    # A large OTG world takes minutes to save. Cutting the save short is how
-    # world corruption happens.
+    # A large world takes minutes to save. Cutting the save short is how
+    # region files corrupt.
     stop_grace_period: 10m
 
-    # ── ADR-0010 / ADR-0012 ─────────────────────────────────────────
-    # mem_limit sits above expected RSS (~9.4-9.9 GB) so the cgroup bounds the
-    # JVM without strangling it. oom_score_adj biases the kernel's OOM killer
-    # away from this container: by default it targets the largest consumer,
-    # which is exactly this process, and would drop every connected player.
+    # ── ADR-0010 ────────────────────────────────────────────────────
+    # mem_limit bounds the JVM without strangling it, and is deliberately NOT
+    # raised alongside MEMORY: leaving it at 10g is what makes the 8G decision
+    # measurable. An 8G heap needing more than 10g of RSS is one this Host
+    # cannot afford, and the cgroup is where that shows up as a number instead
+    # of as the whole box quietly swapping.
+    #
+    # oom_score_adj biases the kernel's OOM killer away from this container:
+    # by default it targets the largest consumer, which is exactly this
+    # process, and would drop every connected player.
     mem_limit: 10g
     oom_score_adj: -500
 
@@ -373,13 +406,13 @@ services:
       # ── The Chat Bridge ───────────────────────────────────────────
       # Both paths are inside the pack mount below, so the bridge adds no
       # access this container did not already have. The world directory is
-      # DregoraRL and not `world` because that is what level-name says.
+      # Homestead and not `world` because that is what level-name says.
       #
       # Reading the log FILE rather than `docker logs` is deliberate: the
       # container's stdout carries ANSI escapes from the pack's own colouring
       # (measured: `> [K[10:13:35] ...`), and the file on disk is clean.
       MC_LOG_PATH: /pack/logs/latest.log
-      MC_WORLD_DIR: /pack/DregoraRL
+      MC_WORLD_DIR: /pack/Homestead
       BRIDGE_POLL_MS: "2000"
       # Each scan asks the Game Server to flush the world first, because Better
       # Questing writes progress on save rather than on completion. Slow on

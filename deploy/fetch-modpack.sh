@@ -15,7 +15,7 @@ source "$HERE/modpack.lock"
 
 DIST="${DIST_DIR:-/srv/mc/dist}"
 PACK="${PACK_DIR:-/srv/mc/pack}"
-ARCHIVE="$DIST/dregora-${MODPACK_VERSION}-serverpack.zip"
+ARCHIVE="$DIST/${MODPACK_FILE}"
 FORCE="${1:-}"
 
 log()  { printf '\n\033[1m==> %s\033[0m\n' "$*"; }
@@ -56,7 +56,35 @@ if [[ -d "$PACK" && -n "$(ls -A "$PACK" 2>/dev/null)" && "$FORCE" != "--force" ]
 fi
 log "Unpacking to $PACK"
 mkdir -p "$PACK"
-unzip -q -o "$ARCHIVE" -d "$PACK"
+
+# ── The wrapper directory ────────────────────────────────────────────
+#
+# Homestead's archive puts everything under a single top-level directory named
+# after the version; Dregora's did not, and this script unpacked straight into
+# $PACK on that assumption. Left unhandled it produces
+# /srv/mc/pack/Homestead1.3.7/mods and a server that starts with no mods —
+# which looks like a broken pack rather than a broken unpack.
+#
+# Unpacked into a staging directory and merged with `cp -a src/. dest/` rather
+# than moved: `mv staging/prefix/config "$PACK"/` puts config INSIDE an
+# existing $PACK/config instead of over it, which is the classic version of
+# this bug and is worse than the one being fixed. Staging lives beside the
+# archive so the copy stays on one filesystem.
+if [[ -n "${MODPACK_ZIP_PREFIX:-}" ]]; then
+  staging="$(mktemp -d "$DIST/.unpack.XXXXXX")"
+  # shellcheck disable=SC2064
+  trap "rm -rf '$staging'" EXIT
+  unzip -q -o "$ARCHIVE" -d "$staging"
+  [[ -d "$staging/$MODPACK_ZIP_PREFIX" ]] \
+    || die "MODPACK_ZIP_PREFIX is '$MODPACK_ZIP_PREFIX' but the archive has no such
+       directory. ServerPackCreator names it after the version, so a pack
+       upgrade changes it. Check with: unzip -Z1 '$ARCHIVE' | head -1"
+  cp -a "$staging/$MODPACK_ZIP_PREFIX/." "$PACK"/
+  rm -rf "$staging"
+  trap - EXIT
+else
+  unzip -q -o "$ARCHIVE" -d "$PACK"
+fi
 
 # ── 4. Drop client-only payload ──────────────────────────────────────
 # Verified by inspecting the archive, not guessed:

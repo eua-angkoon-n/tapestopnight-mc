@@ -1,49 +1,89 @@
 # Modpack pin (ADR-0009).
 #
-# The payload is NOT in git: mods/ alone is 565 MB across 206 jars, and git
-# cannot delta-compress jars. The zip lives in off-box storage; this file is
-# how we prove the bytes are the right ones.
+# The payload is NOT in git: git cannot delta-compress jars, and Homestead
+# ships 307 of them. The zip lives in off-box storage; this file is how we
+# prove the bytes are the right ones.
 #
 # Mod version drift is the most common cause of "my client can't join".
 # fetch-modpack.sh MUST verify SHA256 before unpacking.
 
-MODPACK_NAME="RLCraft Dregora"
-MODPACK_VERSION="v1.1.2b"
-MODPACK_FILE="RLCraft Dregora v1.1.2b - server pack.zip"
-MODPACK_SIZE_BYTES=676115507
-MODPACK_SHA256="548a32645f6bf104f4f2eeea3409ba3baf162dd428f113647f16990ec270ac5a"
+MODPACK_NAME="Homestead"
+MODPACK_VERSION="1.3.7"
+MODPACK_FILE="Homestead1.3.7_server_pack.zip"
+MODPACK_SIZE_BYTES=537016567
+MODPACK_SHA256="38e90816b5eb6bd5a3b66096ad60d08bd9c8d69c00b4d27c6bc38f4233fd9e81"
 
 # Where fetch-modpack.sh downloads from.
 #
-# DELIBERATELY EMPTY — decided 2026-09-09. The zip is kept on the Host at
-# /srv/mc/dist/ and on the maintainer's own machine, and that is judged
-# enough for a two-person game server. fetch-modpack.sh already handles this
-# correctly: it uses a local archive when one is present, and dies with a
-# clear message rather than pretending, when one is not.
+# DELIBERATELY EMPTY — same decision as the Dregora pin, and now also forced.
+# Homestead's server pack is not distributed through CurseForge; the wiki links
+# a Google Drive file, and Drive serves an interstitial HTML page to curl for
+# files this size rather than the file. A URL here would fetch a few kilobytes
+# of markup and fail the hash check in a confusing way.
 #
-# The cost, stated so nobody is surprised by it: a clean-box rebuild needs
-# someone to bring the zip along. The SHA256 below still does its real job —
-# proving the bytes are the right ones — but it cannot fetch them. If the
-# Host is ever lost with no local copy to hand, this exact build is gone and
-# the pack would have to be re-downloaded from CurseForge and re-pinned.
+# The zip is kept on the Host at /srv/mc/dist/ and on the maintainer's own
+# machine. The cost, stated so nobody is surprised by it: a clean-box rebuild
+# needs someone to bring the zip along. The SHA256 above still does its real
+# job — proving the bytes are the right ones — but it cannot fetch them.
 MODPACK_URL=""
 
-# Runtime the pack requires (see docs/adr and the pack's SERVER README OR DIE.txt)
-MINECRAFT_VERSION="1.12.2"
-FORGE_VERSION="14.23.5.2860"
-JAVA_MAJOR=8
+# The archive wraps everything in ONE top-level directory, `Homestead1.3.7/`.
+# Dregora's did not, and fetch-modpack.sh unpacked straight into the pack
+# directory on that assumption — which here would have produced
+# /srv/mc/pack/Homestead1.3.7/mods and a server with no mods at all.
+# fetch-modpack.sh strips exactly this prefix. Re-check it on a pack upgrade:
+# ServerPackCreator names the directory after the version.
+MODPACK_ZIP_PREFIX="Homestead1.3.7"
 
-# Client-only paths shipped in the "server pack" that the Game Server never
-# reads. fetch-modpack.sh deletes these after unpacking (ADR-0009).
-# Verified by inspecting the archive. structures/ is deliberately absent from
-# this list: its .rcst/.rcig/.rcgp/.rcbm files are Recurrent Complex worldgen
-# definitions and ARE server-side.
+# Where players get the pack, and where they read about it. Seeded into
+# server_info by db/seed/seed.ts so the website, the bot and this pin cannot
+# disagree about which pack is running.
+MODPACK_PAGE_URL="https://www.curseforge.com/minecraft/modpacks/homestead-cozy"
+MODPACK_WIKI_URL="https://cozystudios.org/homestead/intro/"
+
+# Runtime the pack requires. Read out of the pack's own variables.txt, not
+# guessed: MINECRAFT_VERSION=1.20.1, MODLOADER=Fabric, MODLOADER_VERSION=0.18.4,
+# RECOMMENDED_JAVA_VERSION=17.
+#
+# Note what changed from the Dregora pin, because almost everything did: Forge
+# became Fabric, 1.12.2 became 1.20.1 and Java 8 became Java 17. The Java 8 GC
+# flags in docker-compose.yml are not merely deprecated on 17, they are
+# removed — a JVM started with -Xloggc refuses to boot.
+#
+# JAVA_MAJOR is 17 because that is what the pack says it wants. 21 would very
+# probably work and was the first choice here; the pack's own number won,
+# because "probably" is how a 307-mod pack produces a mixin crash that names a
+# mod rather than the JRE.
+MINECRAFT_VERSION="1.20.1"
+LOADER_NAME="Fabric"
+LOADER_VERSION="0.18.4"
+JAVA_MAJOR=17
+
+# Paths deleted after unpacking (ADR-0009).
+#
+# ── No client mods are listed here, and that is not an oversight ─────────────
+#
+# The Dregora list existed because Forge 1.12.2 loads every jar in mods/ and
+# does not know which are client-side. Fabric does: a mod declares
+# `"environment": "client"` in its fabric.mod.json and the loader skips it
+# entirely on a dedicated server. Verified against this archive — iris-1.7.6
+# declares exactly that.
+#
+# The pack ships a handful of jars that a player thinks of as client-side
+# (Xaero's minimap and world map, JEI, Jade, AppleSkin, screenshot-to-clipboard)
+# and those declare `"environment": "*"`. They are built to load on a server and
+# several of them have real server-side halves — Jade and AppleSkin send data to
+# the client. Deleting them to save disk would be trading a working feature for
+# a few hundred megabytes. They stay.
+#
+# What IS deleted is the pack's own launcher, which is a foot-gun under itzg
+# rather than client payload: start.sh downloads the ServerStarterJar and
+# installs a SECOND server into the same directory. Anybody who runs it while
+# debugging gets a second Minecraft that fights the first over the world.
 CLIENT_ONLY_PATHS=(
-  "resources"        # 135.8 MB - menu animation frames, dsurround sounds, GUI art
-  "resourcepacks"    #  16.9 MB
-  "shaderpacks"      #   3.7 MB
-  "fancymenu_data"   #   1.7 MB - FancyMenu is a client main-menu mod
-  "options.txt"
-  "optionsof.txt"
-  "optionsshaders.txt"
+  "start.sh"
+  "start.bat"
+  "start.ps1"
+  "install_java.sh"
+  "install_java.ps1"
 )
