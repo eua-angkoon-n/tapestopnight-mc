@@ -282,16 +282,6 @@ kbd,
   overflow: hidden;
 }
 
-/* Full-bleed background media. */
-.media-bg {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  z-index: 0;
-}
-
 /*
   Two scrims, doing different jobs.
 
@@ -391,30 +381,28 @@ kbd,
 }
 
 /*
-  Reduced motion: a still frame instead of a loop.
+  The hero image. A still, deliberately.
 
-  The poster layer sits BEHIND the video rather than relying on the video's
-  own poster attribute, because hiding the <video> element would hide its
-  poster with it. Both reference the same file, so this costs no extra
-  request — and CSS alone cannot pause a video, which is why the video is
-  removed rather than stopped.
+  This was an autoplaying looped mp4 with a poster layer behind it, a
+  reduced-motion rule to remove the video, and a <video> element carrying
+  muted/playsInline/preload so iOS would accept the autoplay. All of that is
+  gone. The still does the same job with none of it, is a megabyte lighter,
+  and needs no reduced-motion carve-out because there is no motion to suppress
+  — an autoplaying full-screen background was exactly what that media query
+  exists to ask for less of.
 
-  An autoplaying full-screen background is precisely the kind of motion this
-  media query exists to suppress, so it is a correctness fix, not a nicety.
+  background-image rather than an <img>: the hero is decorative, sits behind
+  the scrim and the copy, and has no meaning to convey — so it should not be
+  in the accessibility tree at all, which is simpler to guarantee from CSS
+  than with an <img alt="">.
 */
-.media-poster {
+.media-still {
   position: absolute;
   inset: 0;
   z-index: 0;
-  background-image: url("/media/homestead-poster.jpg");
+  background-image: url("/media/homestead-hero.webp");
   background-size: cover;
   background-position: center;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .media-bg {
-    display: none;
-  }
 }
 
 /* Near-full-bleed container. `.wrap` caps at 68rem, which is right for reading
