@@ -47,6 +47,26 @@ deploy time. Mods added on top of the pack are pinned the same way in
 → [ADR-0009](./docs/adr/0009-git-excludes-vendor-payload.md),
 [ADR-0017](./docs/adr/0017-extra-mods-outside-the-pinned-pack.md)
 
+## Working on this repo
+
+**Do this once per clone, before your first commit:**
+
+```bash
+git config core.hooksPath .githooks
+```
+
+Git does not install hooks from a checkout, so without it `.githooks/` is decoration. Two
+hooks live there: `pre-commit` runs the `gitleaks` secret scan ADR-0010 requires, and
+`pre-push` refuses a direct push to `main`. Both fail closed. `pre-commit` also refuses to run
+if `gitleaks` is missing, rather than skipping the scan — `winget install gitleaks`.
+
+**`main` takes merged pull requests, not pushes.** The GitHub ruleset that would enforce that
+is checked in at [`.github/rulesets/main.json`](./.github/rulesets/main.json) and **is not in
+force**: rulesets are a paid feature on a private repository, and this repository stays private
+for reasons ADR-0010 still holds. Until the plan changes, the `pre-push` hook is all that
+stands there, and it is a habit-catcher on one laptop — not protection.
+→ [ADR-0021](./docs/adr/0021-branch-protection-without-github-pro.md)
+
 ## Runbook
 
 ```bash
