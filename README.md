@@ -62,6 +62,18 @@ OOM killer picks the biggest process, which is the game server, with players con
 docker compose pull && docker compose up -d
 ```
 
+**After a pack change, clear `config_key` before seeding.** `db/seed/0001-seed.sql`
+updates tiers and reasons but deliberately never touches `value`, so an admin's edit
+survives a re-seed. On a pack change that protection points the wrong way: every row
+still holds the previous pack's value, and seeding alone leaves `level-type=OTG` and
+`level-name` aimed at a world that no longer exists. ADR-0002 means nobody catches it
+by reading `server.properties` — the file is output, and a wrong one looks exactly as
+authoritative as a right one.
+
+```sql
+DELETE FROM config_key;   -- right exactly once per pack, wrong every other time
+```
+
 **Change a config value.** Through the admin web UI, then press Apply. Keys are tiered
 `FREE` / `GUARDED` / `LOCKED`; `LOCKED` keys are not rendered as inputs at all, on purpose.
 → [ADR-0003](./docs/adr/0003-config-edit-tiers.md),
