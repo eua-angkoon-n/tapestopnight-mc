@@ -26,12 +26,36 @@ export interface GuildMember {
  */
 export class DiscordApiError extends Error {
   readonly status: number;
+  /**
+   * How long Discord asked us to wait, in milliseconds, or null if it did not
+   * say. Only ever set on a 429.
+   *
+   * Carried on the error rather than handled here because the retry decision
+   * is not this function's to make: it has no idea whether the caller is a
+   * page render that should give up or a job that can sleep.
+   */
+  readonly retryAfterMs: number | null;
 
-  constructor(message: string, status: number) {
+  constructor(message: string, status: number, retryAfterMs: number | null = null) {
     super(message);
     this.name = "DiscordApiError";
     this.status = status;
+    this.retryAfterMs = retryAfterMs;
   }
+}
+
+/**
+ * `Retry-After` in milliseconds.
+ *
+ * Discord sends it in SECONDS on this endpoint, and fractionally — "0.75" is a
+ * normal value. parseFloat, not parseInt, or every sub-second wait rounds to
+ * zero and the caller retries immediately into the same limit.
+ */
+function retryAfterMsFrom(res: Response): number | null {
+  const raw = res.headers.get("retry-after");
+  if (!raw) return null;
+  const seconds = Number.parseFloat(raw);
+  return Number.isFinite(seconds) && seconds >= 0 ? Math.ceil(seconds * 1000) : null;
 }
 
 /**
@@ -55,6 +79,7 @@ export async function fetchGuildMember(
     throw new DiscordApiError(
       `GET /users/@me/guilds/${guildId}/member -> ${res.status}`,
       res.status,
+      res.status === 429 ? retryAfterMsFrom(res) : null,
     );
   }
 

@@ -29,6 +29,31 @@ import { DiscordApiError, authorizeAdmin, fetchGuildMember } from "@tapestopnigh
 
 const ROLE_TTL_MS = 5 * 60 * 1000;
 
+/*
+  What to do when the role check FAILS, which is a different question from how
+  often to repeat one that succeeded.
+
+  This used to set rolesCheckedAt = 0, meaning "check again on the very next
+  request". Against a 429 that is the worst possible response: the endpoint is
+  rate limited precisely because it has been called too often, and every page
+  load then calls it again, takes another 429, and rearms itself. Once an admin
+  crossed the limit they could not get back under it while they kept using the
+  site — observed as an authorisation check that failed "quite often" and
+  seemed to recover at random.
+
+  So a failure now schedules its own next attempt. Discord's own Retry-After is
+  used when it sends one; otherwise the wait doubles from 30s and is capped at
+  the TTL, because waiting longer than the success interval would just make a
+  successful check stale anyway.
+*/
+const RETRY_BASE_MS = 30 * 1000;
+const RETRY_MAX_MS = ROLE_TTL_MS;
+
+function backoffMs(failures: number, retryAfterMs: number | null): number {
+  if (retryAfterMs !== null) return Math.min(retryAfterMs, RETRY_MAX_MS);
+  return Math.min(RETRY_BASE_MS * 2 ** Math.max(0, failures - 1), RETRY_MAX_MS);
+}
+
 const GUILD_ID = process.env.DISCORD_GUILD_ID ?? "";
 const ADMIN_ROLE_ID = process.env.DISCORD_ADMIN_ROLE_ID ?? "";
 
@@ -44,6 +69,19 @@ declare module "next-auth" {
      * was never the problem.
      */
     adminCheckFailed: boolean;
+    /**
+     * Set when the reason the check failed was Discord rate limiting us, not
+     * Discord being down.
+     *
+     * It earns its own flag because the two want opposite advice. For an
+     * outage, signing in again is worth trying. For a rate limit it is the
+     * worst thing the person can do: a fresh sign-in forces an immediate
+     * check, which is another request against the limit that is already
+     * refusing us.
+     */
+    adminCheckRateLimited: boolean;
+    /** Seconds until the next check is allowed, so the page can say so. */
+    adminCheckRetryInSeconds: number;
   }
 }
 
@@ -84,7 +122,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       const accessToken = token.discordAccessToken as string | undefined;
       const discordId = (token.discordId as string | undefined) ?? "";
 
-      if (accessToken && discordId && Date.now() - checkedAt > ROLE_TTL_MS) {
+      const now = Date.now();
+      const notBefore = (token.roleRetryNotBefore as number | undefined) ?? 0;
+
+      // Two separate gates. The TTL says a good answer has gone stale; the
+      // backoff says a bad answer is not worth re-asking yet. Both must allow
+      // it, or a failing check re-arms itself every request.
+      if (accessToken && discordId && now - checkedAt > ROLE_TTL_MS && now >= notBefore) {
         try {
           const member = await fetchGuildMember(accessToken, GUILD_ID);
           const decision = await decideAdmin(discordId, member?.roleIds ?? []);
@@ -92,6 +136,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           token.adminVia = decision.via;
           token.adminCheckFailed = false;
           token.rolesCheckedAt = Date.now();
+          token.roleFailures = 0;
+          token.roleRetryNotBefore = 0;
+          token.adminCheckRateLimited = false;
           if (!member) {
             // A 404 from Discord means "not in that guild", which is a real
             // answer rather than an error — and a confusing one if the guild
@@ -111,16 +158,25 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             nothing anywhere saying why. Diagnosing that cost a round trip
             through the Discord API to prove the role was fine all along.
           */
-          const status = err instanceof DiscordApiError ? ` status=${err.status}` : "";
+          const apiErr = err instanceof DiscordApiError ? err : null;
+          const failures = ((token.roleFailures as number | undefined) ?? 0) + 1;
+          const wait = backoffMs(failures, apiErr?.retryAfterMs ?? null);
+
+          const status = apiErr ? ` status=${apiErr.status}` : "";
+          const told = apiErr?.retryAfterMs != null ? " (Discord's Retry-After)" : "";
           console.error(
             `[auth] role check FAILED for ${discordId}${status}: ` +
               `${err instanceof Error ? err.message : String(err)} — ` +
-              `denying admin until the next check succeeds`,
+              `denying admin, attempt ${failures}, next try in ` +
+              `${Math.round(wait / 1000)}s${told}`,
           );
           token.isAdmin = false;
           token.adminVia = null;
           token.adminCheckFailed = true;
           token.rolesCheckedAt = 0;
+          token.roleFailures = failures;
+          token.roleRetryNotBefore = Date.now() + wait;
+          token.adminCheckRateLimited = apiErr?.status === 429;
         }
       }
 
@@ -132,6 +188,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       session.isAdmin = (token.isAdmin as boolean | undefined) ?? false;
       session.adminVia = (token.adminVia as Session["adminVia"]) ?? null;
       session.adminCheckFailed = (token.adminCheckFailed as boolean | undefined) ?? false;
+      session.adminCheckRateLimited =
+        (token.adminCheckRateLimited as boolean | undefined) ?? false;
+      const notBefore = (token.roleRetryNotBefore as number | undefined) ?? 0;
+      session.adminCheckRetryInSeconds = Math.max(0, Math.ceil((notBefore - Date.now()) / 1000));
       return session;
     },
   },
