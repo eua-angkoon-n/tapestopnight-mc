@@ -25,6 +25,7 @@ future reader does not have to guess — especially where the code looks wrong o
 | [0018](./0018-heap-on-fabric-java17.md) | Run at `-Xmx8G` on Java 17, with a measurement gate instead of a measurement |
 | [0019](./0019-cozy-design-system.md) | Cozy light tokens, Thai-first typography, structural Edit Tiers |
 | [0020](./0020-milestones-from-advancements.md) | Milestones come from the world's advancement files, not Better Questing |
+| [0021](./0021-branch-protection-without-github-pro.md) | `main` protected by a checked-in ruleset plus a local hook, because a private repo on a free plan cannot be protected |
 
 Three of these (0006, 0008, 0018) record a choice made **against** a recommendation. They say so, and
 they state the case for the option that was chosen — not the one that was rejected.
