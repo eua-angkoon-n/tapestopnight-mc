@@ -1,6 +1,7 @@
 import { AttachmentBuilder, EmbedBuilder, type ChatInputCommandInteraction } from "discord.js";
 import { eq } from "drizzle-orm";
 
+import { ACCENT } from "@tapestopnight/core/brand";
 import { serverInfo, type Database } from "@tapestopnight/core/db";
 
 import { env } from "../env.ts";
@@ -13,8 +14,6 @@ import { env } from "../env.ts";
  * update it, and the one that gets forgotten is the one people quote at each
  * other when someone cannot join.
  */
-
-const ACCENT = 0xc75b2a;
 
 async function loadInfo(db: Database) {
   const rows = await db.select().from(serverInfo).where(eq(serverInfo.id, 1)).limit(1);
@@ -37,7 +36,7 @@ export async function handleInfoModpack(
     .addFields(
       { name: "เวอร์ชัน modpack", value: `\`${info.modpackVersion}\``, inline: true },
       { name: "Minecraft", value: `\`${info.minecraftVersion}\``, inline: true },
-      { name: "Forge", value: `\`${info.forgeVersion}\``, inline: true },
+      { name: info.loaderName, value: `\`${info.loaderVersion}\``, inline: true },
     )
     .setFooter({
       // The single most common reason someone cannot join, said before they ask.
