@@ -48,6 +48,14 @@
      that moved --ok out from under it. */
   --ok-wash: rgba(67, 121, 79, 0.12);
 
+  /* Type that sits ON the hero image rather than on the page.
+     Not --text. The hero is the one surface here whose background is a
+     photograph, and a photograph is not a colour you can pick contrast
+     against — so the text goes light and the scrim underneath goes dark
+     enough to guarantee it. Everything else on the site stays dark-on-cream. */
+  --on-media: #fdfaf4;
+  --on-media-muted: #ebe4d9;
+
   /* Thai needs more room than English. Vowels stack above the line and tone
      marks stack above those; at 1.5 they collide with the line above. */
   --leading: 1.75;
@@ -285,15 +293,27 @@ kbd,
 /*
   Two scrims, doing different jobs.
 
-  The gradient reproduces the template's bottom fade so the section hands off
-  into the page instead of ending on a hard cut. The flat wash is a
-  legibility floor.
+  The bottom gradient hands the section off into the cream page instead of
+  ending on a hard cut. The veil underneath it is the legibility floor.
 
-  Note the direction: under the dark theme this wash was BLACK, because the
-  text was light and the footage was bright in places. The hero text is now
-  near-black on cream, so the wash has to be CREAM — a dark scrim under dark
-  text is not a weaker fix, it is the wrong one, and the Homestead footage is
-  a sunlit wheat field that would swallow the type without it.
+  ── This was a cream wash, and that was wrong twice over ──────────────────
+
+  The reasoning behind the cream version was "the page's text is near-black,
+  so the wash must be light". It produced the worst of both outcomes: a
+  sunlit, busy photograph washed out to a pale blur, AND dark text sitting on
+  top of a pale blur at a contrast ratio no amount of extra wash could fix —
+  lightening the backdrop of dark text and lightening the picture are the same
+  slider, pulling against each other.
+
+  A photograph is not a colour you can pick contrast against. So the hero
+  stops trying: the veil goes dark, the type on it goes light (--on-media),
+  and both problems solve in the same move. The image reads as richer rather
+  than faded, because a dark veil deepens a bright picture instead of bleaching
+  it, and the type clears 4.5:1 against the veil wherever the photo happens to
+  be light.
+
+  This is the only surface on the site that inverts. Everything below the hero
+  is dark-on-cream, which is why the bottom 18% still fades to --bg.
 */
 .scrim {
   position: absolute;
@@ -301,13 +321,62 @@ kbd,
   z-index: 1;
   pointer-events: none;
   background:
-    linear-gradient(to top, var(--bg) 0%, rgba(250, 246, 238, 0.72) 28%, transparent 62%),
-    rgba(250, 246, 238, 0.45);
+    /* Hands the section off into the cream page rather than ending on a cut. */
+    linear-gradient(to top, var(--bg) 0%, transparent 20%),
+    /*
+      A pool of shade under the type, not a sheet over the picture.
+
+      A flat veil strong enough for AA text (about 70%) turns a sunlit field
+      into mud, which is the complaint that produced this. An ellipse centred
+      on the text column gets the same contrast where the letters are and
+      leaves the frame — the characters, the sky, the field — almost untouched.
+
+      Measured against this photograph rather than guessed, sampling the actual
+      pixels behind each line of type at its worst point, not its average:
+
+        title              6.09:1
+        "Homestead"        6.62:1
+        the address       6.87:1
+        version line       4.58:1   <- the tightest, and still AA
+
+      The centre reaches 0.74 and the edges 0.16: a blown highlight in the
+      middle lands at rgb(82,65,49), while the sky at the top only moves from
+      rgb(228,217,225) to rgb(196,186,192).
+    */
+    radial-gradient(
+      58% 50% at 50% 58%,
+      rgba(28, 23, 19, 0.74) 0%,
+      rgba(28, 23, 19, 0.62) 55%,
+      rgba(28, 23, 19, 0.16) 100%
+    );
 }
 
 .section-content {
   position: relative;
   z-index: 2;
+}
+
+/*
+  Type sitting on the hero image.
+
+  Applied to the container rather than to each element so that the components
+  inside it — the status pill, the copyable address — inherit instead of each
+  needing to know they are on a photo. `.muted` and `.faint` are re-pointed
+  rather than left alone: their cream-theme values are chosen for contrast
+  against --bg and are close to invisible over a dark veil.
+
+  The text-shadow is deliberately soft and does not replace the veil. It
+  covers the case the veil cannot: a stray highlight in the photograph landing
+  directly behind a letter.
+*/
+.on-media,
+.on-media .display {
+  color: var(--on-media);
+  text-shadow: 0 1px 3px rgba(24, 20, 16, 0.55);
+}
+.on-media .muted,
+.on-media .faint {
+  color: var(--on-media-muted);
 }
 
 /* The template's section-2 grid: text card and image side by side, stacking

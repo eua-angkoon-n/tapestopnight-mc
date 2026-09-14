@@ -32,7 +32,10 @@ export function CopyAddress({ address }: { address: string }) {
           fontSize: "clamp(1.35rem, 4.5vw, 2.1rem)",
           fontWeight: 600,
           letterSpacing: "0.01em",
-          color: "var(--text)",
+          // `currentColor`, not --text: this sits inside the hero, where the
+          // surrounding .on-media has already decided what colour reads against
+          // a photograph. --text is the cream theme's near-black and vanishes there.
+          color: "currentColor",
           borderBottom: "2px solid var(--accent)",
           paddingBottom: "0.15rem",
         }}
