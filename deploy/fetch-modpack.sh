@@ -139,7 +139,7 @@ fi
 log "Done"
 echo "  pack : $PACK"
 echo "  mods : $(find "$PACK/mods" -name '*.jar' 2>/dev/null | wc -l) jars"
-echo "  MC   : $MINECRAFT_VERSION / Forge $FORGE_VERSION / Java $JAVA_MAJOR"
+echo "  MC   : $MINECRAFT_VERSION / $LOADER_NAME $LOADER_VERSION / Java $JAVA_MAJOR"
 echo
 echo "  server.properties is NOT written by this script — it is rendered from"
 echo "  Postgres (ADR-0002). Phase 1 seeds it from the pack's own copy once."

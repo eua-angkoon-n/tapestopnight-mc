@@ -62,6 +62,17 @@ OOM killer picks the biggest process, which is the game server, with players con
 docker compose pull && docker compose up -d
 ```
 
+**Bootstrap the first boot.** The pack ships its own `server.properties` and the server
+starts on it once, before anything has Applied. That boot is when the world is generated,
+so the keys that must be right then are set by hand — RCON, `max-tick-time=-1` and
+`level-name`. The script needs `RCON_PASSWORD`, which lives in the file nothing may read,
+so run it inside the container compose already injects it into:
+
+```bash
+docker compose run --rm -T -v /srv/mc/repo/deploy:/scripts:ro --entrypoint /bin/sh mc \
+  -c "python3 /scripts/seed-server-properties.py /data/server.properties"
+```
+
 **After a pack change, clear `config_key` before seeding.** `db/seed/0001-seed.sql`
 updates tiers and reasons but deliberately never touches `value`, so an admin's edit
 survives a re-seed. On a pack change that protection points the wrong way: every row
@@ -206,6 +217,20 @@ holding the whole file rather than a fragment is unchanged: it is what keeps
 On the next pack upgrade, re-capture the pack's copy and re-apply the two values rather than
 carrying the file forward. The mod gains settings between versions, and a stale overlay
 overwrites the new ones with absence.
+
+**Install the pack.** `fetch-modpack.sh` refuses to unpack into a non-empty pack
+directory, and `prepare-host.sh` creates `logs/` inside it — so running them in that
+order makes the second one refuse. Fetch first:
+
+```bash
+deploy/fetch-modpack.sh      # verify SHA256, unpack, drop client-only paths, apply overlay
+deploy/prepare-host.sh       # then create logs/, which the JVM opens at startup
+```
+
+The refusal is correct and worth keeping: it is what stops a pack being unpacked over
+the top of another one. `--force` exists for a same-pack refresh and is the wrong tool
+for a version change — `unzip -o` does not clear `mods/`, so jars from the old pack
+survive into a Minecraft version they do not support. Delete the pack directory instead.
 
 **Check for config drift.** An overlay cannot see someone hand-editing a mod config on the
 Host. Runs daily at 05:30 Bangkok; run it by hand any time:
