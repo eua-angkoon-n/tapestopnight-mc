@@ -55,6 +55,20 @@ BASELINE="${STATE_DIR}/drift-baseline.sha256"
 # runtime state (world, logs, crash reports) that is SUPPOSED to change.
 SUBTREES=("config" "scripts")
 
+# Paths inside those subtrees that are runtime state despite living under
+# config/. Matched against the path as it appears in the manifest — note the
+# [ *] in the pattern below: sha256sum separates the hash from the path with
+# two spaces in text mode and " *" in binary mode, and a filter that assumes
+# one of them silently matches nothing on a host that uses the other.
+#
+# config/spark/tmp/ is the profiler's scratch space. Every file in it is named
+# with a fresh random id, so a pair of them shows up as one ADDED and one
+# REMOVED on every single run — permanent noise in a daily report, which is the
+# failure this check already guards against elsewhere: the first --vs-pack run
+# on Dregora returned 136 differences and not one was a human edit. A report
+# nobody reads catches nothing.
+IGNORE_RE='config/spark/tmp/'
+
 MODE="${1:-baseline}"
 
 log() { printf '%s  %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*"; }
@@ -66,7 +80,9 @@ die() { log "CANNOT RUN: $*"; exit 2; }
 manifest_live() {
   for sub in "${SUBTREES[@]}"; do
     [ -d "${PACK_DIR}/${sub}" ] || continue
-    ( cd "${PACK_DIR}" && find "${sub}" -type f -print0 | sort -z | xargs -0 -r sha256sum )
+    (
+      cd "${PACK_DIR}" && find "${sub}" -type f -print0 | sort -z | xargs -0 -r sha256sum
+    ) | grep -vE "^[0-9a-f]{64}[ *]+${IGNORE_RE}" || true
   done
 }
 
