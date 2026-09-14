@@ -1,5 +1,7 @@
 import { auth, signIn, signOut } from "@/auth";
 
+import { NavMenu } from "./NavMenu";
+
 /**
  * Site header — requirements 2.1 and 2.2.
  *
@@ -8,8 +10,12 @@ import { auth, signIn, signOut } from "@/auth";
  * rather than cutting a solid band across it.
  *
  * Still a SERVER component. It calls auth() and renders sign-in/sign-out as
- * server actions, so the landing page gains a navigation bar without gaining a
- * client bundle (ADR-0006).
+ * server actions, so the landing page gains a navigation bar without moving
+ * any of that to the browser (ADR-0006).
+ *
+ * Below 56rem the links and the account control collapse into a hamburger.
+ * Only the open/closed flag is client-side — see NavMenu, which takes this
+ * component's server-rendered output as children rather than rebuilding it.
  *
  * The config link is shown only to admins, but that is tidiness, not security:
  * /config answers a real 403 server-side whether or not the link is rendered
@@ -60,34 +66,26 @@ export async function SiteHeader() {
           tapestopnight
         </a>
 
-        {/*
-          Wraps instead of scrolling horizontally on narrow screens. A nav that
-          scrolls sideways hides its own last item, and "ตั้งค่าเซิร์ฟเวอร์" is
-          the longest label here.
-        */}
-        <nav
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: "1.4rem",
-            flexWrap: "wrap",
-            flex: 1,
-          }}
-        >
+        <NavMenu>
+          {/*
+            Wraps instead of scrolling horizontally. A nav that scrolls
+            sideways hides its own last item, and "ตั้งค่าเซิร์ฟเวอร์" is the
+            longest label here. Inside the hamburger it stacks instead.
+          */}
+          <nav className="nav-sections">
           {SECTIONS.map((s) => (
             <a key={s.href} href={s.href} className="nav-link">
               {s.label}
             </a>
           ))}
-          {session?.isAdmin ? (
-            <a href="/config" className="nav-link" style={{ color: "var(--accent)" }}>
-              ตั้งค่าเซิร์ฟเวอร์
-            </a>
-          ) : null}
-        </nav>
+            {session?.isAdmin ? (
+              <a href="/config" className="nav-link" style={{ color: "var(--accent)" }}>
+                ตั้งค่าเซิร์ฟเวอร์
+              </a>
+            ) : null}
+          </nav>
 
-        <div style={{ display: "flex", alignItems: "center", gap: "0.65rem", flex: "none" }}>
+          <div className="nav-account">
           {session ? (
             <>
               <span className="muted" style={{ fontSize: "0.88rem" }}>
@@ -141,7 +139,8 @@ export async function SiteHeader() {
               ยังไม่ได้เปิดระบบล็อกอิน
             </span>
           )}
-        </div>
+          </div>
+        </NavMenu>
       </div>
     </header>
   );

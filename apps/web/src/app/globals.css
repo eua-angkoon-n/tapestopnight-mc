@@ -278,6 +278,158 @@ kbd,
   color: var(--text);
 }
 
+/* ── The header at narrow widths ──────────────────────────────────────
+   One breakpoint, 56rem, the same one .card-grid already uses. Above it
+   nothing below this comment applies: the toggle is hidden and .nav-panel is
+   an ordinary flex row, which is the bar that was always there.
+
+   56rem is not a guess about phones. It is where "หน้าแรก แชท Wiki เกี่ยวกับ
+   ตั้งค่าเซิร์ฟเวอร์" plus the site name plus a signed-in username plus a
+   button stop fitting on one line — the labels are Thai and longer than the
+   English they replaced, and the admin link is the longest of them. */
+
+.nav-panel {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex: 1;
+}
+
+.nav-sections {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.4rem;
+  flex-wrap: wrap;
+  flex: 1;
+}
+
+.nav-account {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex: none;
+}
+
+/* The button exists in the DOM at every width so its aria-expanded stays
+   truthful; only its display changes. */
+.nav-toggle {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 2.6rem;
+  height: 2.6rem;
+  padding: 0;
+  flex: none;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface-raised);
+  color: var(--text);
+  cursor: pointer;
+}
+.nav-toggle:hover {
+  border-color: var(--accent);
+}
+
+.nav-toggle-bars {
+  display: block;
+  position: relative;
+  width: 1.15rem;
+  height: 0.85rem;
+}
+.nav-toggle-bars span {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  border-radius: 2px;
+  background: currentColor;
+  transition: transform 160ms ease, opacity 120ms ease;
+}
+.nav-toggle-bars span:nth-child(1) {
+  top: 0;
+}
+.nav-toggle-bars span:nth-child(2) {
+  top: 50%;
+  transform: translateY(-50%);
+}
+.nav-toggle-bars span:nth-child(3) {
+  bottom: 0;
+}
+
+/* Open: the bars become a cross, so the same control visibly closes it. */
+.nav-toggle[aria-expanded="true"] .nav-toggle-bars span:nth-child(1) {
+  top: 50%;
+  transform: translateY(-50%) rotate(45deg);
+}
+.nav-toggle[aria-expanded="true"] .nav-toggle-bars span:nth-child(2) {
+  opacity: 0;
+}
+.nav-toggle[aria-expanded="true"] .nav-toggle-bars span:nth-child(3) {
+  bottom: auto;
+  top: 50%;
+  transform: translateY(-50%) rotate(-45deg);
+}
+
+@media (max-width: 55.99rem) {
+  .nav-toggle {
+    display: inline-flex;
+  }
+
+  /*
+    display:none rather than a height or opacity transition. A panel that is
+    merely invisible is still focusable, so a keyboard would tab through a
+    closed menu into links nobody can see — and screen readers would read it.
+  */
+  .nav-panel {
+    display: none;
+  }
+  .nav-panel[data-open="true"] {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.35rem;
+
+    /* Out of the header's flex row and pinned under it. The header is sticky
+       and translucent; this needs its own solid ground or the links land on
+       the hero photograph. */
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    padding: 0.5rem 1.25rem 1rem;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    box-shadow: 0 12px 24px -12px rgba(46, 42, 36, 0.28);
+  }
+
+  .nav-panel[data-open="true"] .nav-sections {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+  }
+
+  /* Rows, not a wrapped line. Each one is a tap target of its own, and 2.75rem
+     clears the ~44px minimum a finger needs. */
+  .nav-panel[data-open="true"] .nav-link {
+    display: block;
+    padding: 0.7rem 0.25rem;
+    min-height: 2.75rem;
+    font-size: 1rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .nav-panel[data-open="true"] .nav-account {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.6rem;
+    padding-top: 0.75rem;
+  }
+  .nav-panel[data-open="true"] .nav-account .btn {
+    justify-content: center;
+  }
+}
+
 /* Full-height section. svh, not vh: on mobile browsers vh includes the
    retracting address bar, so a 100vh hero is taller than the screen and the
    content sits partly below the fold on first paint. */
