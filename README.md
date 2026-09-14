@@ -232,6 +232,19 @@ the top of another one. `--force` exists for a same-pack refresh and is the wron
 for a version change — `unzip -o` does not clear `mods/`, so jars from the old pack
 survive into a Minecraft version they do not support. Delete the pack directory instead.
 
+**Site media is payload, but it is not disposable.** `/srv/mc/media` is bind-mounted
+read-only into the web container and deliberately kept out of git (ADR-0009 — a 30 MB
+mp4 makes every clone pay for it). Nothing backs it up, and nothing versions it, so an
+upload that reuses an existing filename destroys the only copy. That is not
+hypothetical: `about.webp` was overwritten on 2026-09-14 during the Homestead cutover
+and the original could not be recovered from the Host, the image, or git.
+
+Snapshot before replacing anything in there, and prefer a new filename to reusing one:
+
+```bash
+.claude/bin/vps-do.sh 'mkdir -p /srv/mc/archive/media-$(date +%Y%m%d) && \n  cp -a /srv/mc/media/. /srv/mc/archive/media-$(date +%Y%m%d)/'
+```
+
 **Check for config drift.** An overlay cannot see someone hand-editing a mod config on the
 Host. Runs daily at 05:30 Bangkok; run it by hand any time:
 

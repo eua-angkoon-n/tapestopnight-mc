@@ -9,9 +9,8 @@ export const dynamic = "force-dynamic";
  * The public landing page — requirement 2.3.
  *
  * Three scrolled sections, following the Velorah template's structure with
- * this project's own tokens (ADR-0007 unchanged): a full-height hero over
- * background video, the wiki embedded in a rounded frame, and an about card
- * grid.
+ * this project's own tokens (ADR-0019): a full-height hero over a still
+ * image, the wiki embedded in a rounded frame, and an about card grid.
  *
  * Entirely server-rendered. The only client code on this page is the two
  * islands that already existed — the polled status pill and the copy button —
@@ -45,30 +44,9 @@ export default async function HomePage() {
     <main>
       {/* ── 1. Hero ─────────────────────────────────────────────── */}
       <section id="home" className="section-tall">
-        {/* Behind the video: the still that reduced-motion users get instead
-            of a loop, and what everyone sees while the video is arriving. */}
-        <div className="media-poster" aria-hidden="true" />
-        {/*
-          muted + playsInline are not optional: iOS refuses to autoplay
-          without both, and would show a stalled first frame with a play
-          button over it instead of a background.
-
-          preload="metadata" keeps the video off the critical path — the
-          poster above is what makes that safe.
-        */}
-        <video
-          className="media-bg"
-          autoPlay
-          muted
-          loop
-          playsInline
-          preload="metadata"
-          poster="/media/homestead-poster.jpg"
-          aria-hidden="true"
-          tabIndex={-1}
-        >
-          <source src="/media/homestead.mp4" type="video/mp4" />
-        </video>
+        {/* A still, not a loop. See .media-still in globals.css for what this
+            replaced and why none of it is missed. */}
+        <div className="media-still" aria-hidden="true" />
         <div className="scrim" />
 
         <div
