@@ -50,7 +50,7 @@ A restore is the most dangerous thing anyone on this team can do, and it is your
   host `db` on the compose network. Restore through `docker exec -i tapestopnight-db
   psql`. Before any restore, dump the current state first — even a bad current state
   is evidence.
-- **The world.** Restoring means stopping the Game Server, moving `DregoraRL` aside
+- **The world.** Restoring means stopping the Game Server, moving `Homestead` aside
   (never deleting it in the same breath), unpacking, and starting. `mc-server-ops`
   owns the stop and start; you own the archive handling. Keep the displaced world
   until the operator confirms the restore is good.

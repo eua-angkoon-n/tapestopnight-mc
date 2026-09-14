@@ -77,7 +77,7 @@ export async function start(opts: DockerOptions): Promise<void> {
  *
  * The image's entrypoint turns SIGTERM into an RCON `stop`, so this is a
  * graceful save. `stop_grace_period` in the compose file is 10 minutes because
- * a large OTG world genuinely takes minutes to write; the default 10 seconds
+ * a large world genuinely takes minutes to write; the default 10 seconds
  * would cut the save short. `t` here must not be smaller than that intent.
  */
 export async function stop(opts: DockerOptions, timeoutSeconds = 600): Promise<void> {
@@ -95,7 +95,7 @@ export async function restart(opts: DockerOptions, timeoutSeconds = 600): Promis
  *
  * Half of the "is it down" verdict. The other half is the container state. We
  * never conclude "offline" from a Server List Ping timeout, because
- * `max-tick-time=-1` makes multi-minute stalls a normal part of OTG generation
+ * `max-tick-time=-1` makes multi-minute stalls a normal part of chunk generation
  * and a stalled server looks identical to a dead one over SLP.
  */
 export function tcpProbe(host: string, port: number, timeoutMs = 5_000): Promise<boolean> {

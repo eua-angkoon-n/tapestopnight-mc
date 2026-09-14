@@ -58,7 +58,7 @@ async function tick() {
   // itself to know `status` is the offline variant and carries `.error`.
   if (!status.online) {
     // A ping timeout does NOT mean down. max-tick-time=-1 is mandatory for this
-    // pack because OTG structure generation legitimately blocks the main thread
+    // pack because chunk generation legitimately blocks the main thread
     // for minutes, and that is indistinguishable from a dead server over SLP.
     // So the verdict needs corroboration: the container must be gone, or the
     // port must be refusing connections.
@@ -113,7 +113,7 @@ async function tick() {
   } else if (verdict === "busy") {
     log(
       `BUSY container=${state?.status ?? "unknown"} — ping failed but ${MC_PORT} ` +
-        `accepts TCP, so this is very likely OTG generating chunks. Reported as ` +
+        `accepts TCP, so this is very likely the server generating chunks. Reported as ` +
         `online. (${status.online ? "" : status.error})`,
     );
   } else {

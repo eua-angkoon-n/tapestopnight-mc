@@ -1,3 +1,16 @@
+---
+status: superseded
+superseded-by: ADR-0019
+---
+
+> **Superseded by [ADR-0019](./0019-cozy-design-system.md).** The Dark Fantasy palette was
+> chosen for RLCraft Dregora and its stated reason was about that pack. Homestead is a cozy
+> survival pack and the site is now light. Kept unedited, per the convention ADR-0011 set.
+>
+> The parts of this ADR that were never about the pack — Thai-first typography, and Edit Tiers
+> expressed structurally rather than by hue — are carried forward **unchanged** and restated in
+> full in ADR-0019. They are still binding.
+
 # Design system: Dark Fantasy tokens, Thai-first typography, structural tiers
 
 One token set serves both surfaces; only density changes. Public pages use serif display

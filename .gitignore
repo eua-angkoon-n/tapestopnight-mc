@@ -33,7 +33,7 @@ optionsshaders.txt
 /scripts/
 
 # ── World and runtime state ─────────────────────────────────────────
-DregoraRL/
+Homestead/
 world*/
 logs/
 crash-reports/
@@ -54,3 +54,8 @@ dist/
 # /srv/mc/media and are bind-mounted in. A 30 MB mp4 in git would make every
 # clone carry every re-encode for ever.
 apps/web/public/media/
+
+# Media staged for upload to /srv/mc/media on the Host. Same reason as
+# apps/web/public/media/ above (ADR-0009): this is payload, not source. It is
+# a staging area, not a second home for the files.
+.media-staging/

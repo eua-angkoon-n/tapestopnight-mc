@@ -1,3 +1,13 @@
+---
+status: accepted
+note: mechanism unchanged; the list is empty since Homestead — see the tail
+---
+
+> **The mechanism stands; its one entry is gone.** Homestead bundles Simple Voice Chat among
+> its 374 mods, so `extra-mods.lock` is now empty. Everything below about *how* a mod outside
+> the pack is pinned, verified and backed out is unchanged and still binding. See "Homestead
+> makes this file empty, not obsolete" at the end.
+
 # Mods may be added outside the pinned pack, pinned separately — and the first one is Simple Voice Chat
 
 Players asked to talk to each other in game with proximity audio. There is no
@@ -117,3 +127,43 @@ rather than a half-remembered filename.
   `ForgeVoicechatMod.class` byte-identical. The lock pins the source the script
   actually downloads from. Players may use either link — what has to match
   between them and the server is the version string, not the file hash.
+
+
+## Homestead makes this file empty, not obsolete
+
+Simple Voice Chat ships **inside** Homestead. Pinning a second copy here would put two
+voicechat jars in `mods/`, and Fabric refuses to start on a duplicate mod id — so the entry is
+removed rather than re-pinned for 1.20.1.
+
+An empty `EXTRA_MODS` is a truthful answer to "which mods are on this server, beyond the
+archive", not an absent one. `fetch-extra-mods.sh` says so explicitly rather than printing
+"all extra mods present and pinned" over a list of none.
+
+**What does not go away with the jar:**
+
+- `overlay/config/voicechat/voicechat-server.properties` still carries the two settings that are
+  ours — `voice_host` and `force_voice_chat`. The pack supplies the mod; we still supply the
+  configuration, and the `voicechat/` subdirectory still matters (a file one level up is
+  silently ignored).
+- `voice_host=mc.tapestopnight.com:24454`, because the apex is Cloudflare-proxied and does not
+  carry UDP (ADR-0001). Unchanged.
+- `force_voice_chat=false`. Unchanged, and still the thing not to flip: it throws away the
+  property that lets a player without the mod join at all.
+- `24454:24454/udp` in compose, and `ufw allow 24454/udp` on the Host. Two doors, both still
+  open, neither touched by the pack change.
+
+**What does go away:** the runbook line telling players to install one exact jar version.
+Everyone who installs Homestead has the mod, at the version the pack pins, which is what that
+instruction was trying to achieve by hand.
+
+### The trap this file warned about, which then happened
+
+The ⚠ above says every entry must be re-checked against `MINECRAFT_VERSION` on a pack upgrade,
+because `fetch-modpack.sh --force` unpacks with `unzip -o` and never clears `mods/`. The guard
+in `fetch-extra-mods.sh` implements that and would have fired.
+
+It has one blind spot, now written into the script: if the lock is **emptied in the same change
+that upgrades the pack** — exactly what this migration did — there is no entry left to compare,
+so `--remove` has nothing to remove and the stale 1.12.2 jar would survive into a 1.20.1
+`mods/` and stop the server booting. Deleting the pack directory outright is what actually
+clears it, which is why the cutover removes `/srv/mc/pack` rather than unpacking over it.

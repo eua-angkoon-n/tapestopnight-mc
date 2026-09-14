@@ -1,7 +1,11 @@
 # tapestopnight-mc
 
-RLCraft Dregora game server on `tapestopnight.com`, plus the Control Plane that operates it:
+Homestead game server on `tapestopnight.com`, plus the Control Plane that operates it:
 a web app for public server info and admin config, and a Discord bot for operations.
+
+Minecraft 1.20.1, Fabric, [Homestead 1.3.7](https://www.curseforge.com/minecraft/modpacks/homestead-cozy).
+Until September 2026 this was RLCraft Dregora on Forge 1.12.2 — if something in here reads as
+though it were written for a different game, that is why, and it is a bug worth fixing.
 
 - **Vocabulary** — [`CONTEXT.md`](./CONTEXT.md). Use these words; they are chosen.
 - **Why anything is the way it is** — [`docs/adr/`](./docs/adr/). Read before changing shape.
@@ -11,13 +15,16 @@ a web app for public server info and admin config, and a Discord bot for operati
 1. **Never hand-edit `server.properties` on the Host.** Postgres is the source of truth; the
    file is generated output. Your edit survives until the next Apply, then vanishes.
    → [ADR-0002](./docs/adr/0002-postgres-source-of-truth.md)
-2. **`-Xmx7G` is deliberate and near the Host's limit.** Java 8's G1 does full GC on a
-   single thread, so pauses scale with heap. The Aikar flags and GC logging are not
-   decoration — they are the mitigation. Do not strip them.
-   → [ADR-0012](./docs/adr/0012-heap-size-on-measured-host.md)
+2. **`-Xmx8G` is deliberate, near the Host's limit, and NOT YET MEASURED on this pack.**
+   The Host has 12 GB and shares it with another system. Measure RSS once the server is idle;
+   above ~9.6 GiB drop to 7G rather than raising `mem_limit`. The Aikar flags and GC logging
+   are the mitigation, not decoration — and the GC flags had to change spelling entirely,
+   because the Java 8 ones were *removed* in JDK 16 and a JVM given them refuses to boot.
+   → [ADR-0018](./docs/adr/0018-heap-on-fabric-java17.md)
 3. **A server that looks hung for five minutes is normal.** `max-tick-time=-1` is mandatory
-   because OTG structure generation takes minutes. Never add a healthcheck, never conclude
-   "down" from an RCON timeout. → [ADR-0005](./docs/adr/0005-docker-itzg-minecraft-server.md)
+   because generating chunks for a 374-mod pack takes minutes, and first boot exceeds the
+   image's start period outright. Never add a healthcheck, never conclude "down" from an RCON
+   timeout. → [ADR-0005](./docs/adr/0005-docker-itzg-minecraft-server.md)
 
 ## Layout
 
@@ -33,7 +40,7 @@ docs/adr/       the decisions
 
 ## What is deliberately not in this repo
 
-The modpack payload (565 MB of jars), the world, `server.properties`, and every secret.
+The modpack payload, the world, `server.properties`, and every secret.
 The pack is pinned by SHA256 in [`deploy/modpack.lock`](./deploy/modpack.lock) and fetched at
 deploy time. Mods added on top of the pack are pinned the same way in
 [`deploy/extra-mods.lock`](./deploy/extra-mods.lock).
@@ -47,7 +54,7 @@ cp .env.example .env      # then fill it in; .env is gitignored
 ```
 
 **Deploy.** Images are built in CI and pushed to GHCR; the Host only pulls. Do **not** run
-`docker compose build` on the Host — a Next.js build peaks at 1–2 GB beside a 4 GB JVM and the
+`docker compose build` on the Host — a Next.js build peaks at 1–2 GB beside an 8 GB JVM and the
 OOM killer picks the biggest process, which is the game server, with players connected.
 → [ADR-0010](./docs/adr/0010-private-repo-ci-builds.md)
 
@@ -58,7 +65,7 @@ docker compose pull && docker compose up -d
 **Change a config value.** Through the admin web UI, then press Apply. Keys are tiered
 `FREE` / `GUARDED` / `LOCKED`; `LOCKED` keys are not rendered as inputs at all, on purpose.
 → [ADR-0003](./docs/adr/0003-config-edit-tiers.md),
-[ADR-0007](./docs/adr/0007-design-system.md)
+[ADR-0019](./docs/adr/0019-cozy-design-system.md)
 
 **Change the Server Icon.** Upload ONE high-resolution square image in the admin UI; the
 64×64 PNG Minecraft needs is derived from it, and the original is what the website shows.
@@ -144,44 +151,49 @@ website has AAAA records, and two people in one house cannot be told apart. That
 exists, and why it is built to be as smooth as the automatic path. → ADR-0016
 
 **Voice chat.** Proximity audio through
-[Simple Voice Chat](https://www.curseforge.com/minecraft/mc-mods/simple-voice-chat), added on top
-of the pack rather than inside it (ADR-0017).
+[Simple Voice Chat](https://www.curseforge.com/minecraft/mc-mods/simple-voice-chat), which
+**Homestead ships as one of its own mods** (ADR-0017).
 
-**Players install this exact version** — `1.12.2-2.6.23`. A different version *connects fine* and
-is then refused audio by the mod's own protocol check, so the symptom is a player in the game
-hearing silence with no error anywhere. Drop the jar in the instance's `mods/` folder and press
-`V` in game for the audio settings.
+Nothing to install, for anybody. Under Dregora this mod was pinned on top of the pack in
+`deploy/extra-mods.lock` and players had to drop one exact jar version into their instance or
+get silence with no error anywhere. That whole runbook is gone: everyone who installs the pack
+has the mod, at the version the pack pins.
 
-    https://www.curseforge.com/minecraft/mc-mods/simple-voice-chat/files/8807690
-    voicechat-forge-1.12.2-2.6.23.jar
-
-Not installing it is fine: the mod sets `acceptableRemoteVersions="*"`, so a player without it
-joins and plays exactly as before, just without voice. Do **not** set `force_voice_chat=true` —
-that throws away this property and starts rejecting those players.
-
-On the Host:
+`deploy/extra-mods.lock` is now empty. The mechanism stays — it is what makes "which mods are
+on this server, beyond the archive" answerable — and an empty list is a truthful answer:
 
 ```bash
-deploy/fetch-extra-mods.sh            # verify the SHA256 and install
-deploy/fetch-extra-mods.sh --check    # report only; exits 1 if missing or wrong
-deploy/fetch-extra-mods.sh --remove   # the back-out, one command
-sudo ufw allow 24454/udp              # compose publishes it; the firewall is a second door
+deploy/fetch-extra-mods.sh --check    # says so explicitly rather than claiming a clean check
 ```
 
-Then restart the Game Server — a jar is only read at start. Prefer `/server restart` from the bot
-so players get the 30-second countdown.
+What is still ours is the **configuration**, in
+`overlay/config/voicechat/voicechat-server.properties` — note the `voicechat/` directory; a
+file one level up is silently ignored, which is how `voice_host` came to be blank on a server
+that otherwise looked deployed. Two values in it matter:
 
-⚠ **`fetch-modpack.sh --force` does not clear `mods/`**, so these jars survive a pack upgrade,
-including one to a Minecraft version they do not support — where a stale jar stops the server
-booting. `fetch-extra-mods.sh` refuses to run when the two lock files disagree about the
-Minecraft version, but re-pin deliberately after any pack change.
+- `voice_host=mc.tapestopnight.com:24454` — **not** the apex. The apex is Cloudflare-proxied
+  and does not carry UDP (ADR-0001), so packets aimed at it vanish silently. If voice connects
+  but nobody can hear anyone, check this first: `tcpdump -ni any udp port 24454` while
+  somebody talks.
+- `force_voice_chat=false` — leave it. Setting it true throws away the property that lets a
+  player without the mod join and play as normal.
 
-If voice connects but nobody can hear anyone, it is almost certainly `voice_host`: the apex is
-Cloudflare-proxied and does not carry UDP (ADR-0001), so packets aimed at it vanish silently.
-Check with `tcpdump -ni any udp port 24454` while somebody talks. The config lives at
-`config/voicechat/voicechat-server.properties` — note the `voicechat/` directory; a file one
-level up is silently ignored, which is how `voice_host` came to be blank on a server that
-otherwise looked deployed.
+The firewall is a second door and compose publishing the port is the first; both are already
+open and neither changed with the pack:
+
+```bash
+sudo ufw allow 24454/udp     # already applied
+```
+
+The overlay is captured verbatim from the pack's own copy of that file — Homestead ships
+`config/voicechat/voicechat-server.properties` alongside `voicechat-fabric-1.20.1-2.6.17.jar` —
+with exactly those two values changed and both marked `OURS` in the file. ADR-0009's reason for
+holding the whole file rather than a fragment is unchanged: it is what keeps
+`check-drift.sh --vs-pack` quiet.
+
+On the next pack upgrade, re-capture the pack's copy and re-apply the two values rather than
+carrying the file forward. The mod gains settings between versions, and a stale overlay
+overwrites the new ones with absence.
 
 **Check for config drift.** An overlay cannot see someone hand-editing a mod config on the
 Host. Runs daily at 05:30 Bangkok; run it by hand any time:
@@ -192,11 +204,16 @@ deploy/check-drift.sh --accept     # record the current state as accepted
 deploy/check-drift.sh --vs-pack    # vs (verified zip + overlay), the ADR-0009 question
 ```
 
-It compares against an **accepted baseline**, not against the pack, and that is deliberate:
-compared against the pristine zip the first real run reported 136 differences and not one was
-a human edit — Forge mods rewrite their own `.cfg` on first boot and srpmixins alone generates
-96 loot tables. A daily job reporting 136 items is one nobody reads. Re-run `--accept` after a
-deliberate pack upgrade, never to silence a report you have not read.
+It compares against an **accepted baseline**, not against the pack, and that is deliberate.
+Measured on Dregora: compared against the pristine zip the first real run reported 136
+differences and not one was a human edit — mods rewrite their own config on first boot, and one
+of them generated 96 loot tables by itself. A daily job reporting 136 items is one nobody
+reads. Expect the same shape from Homestead at a different number; 374 mods is more config to
+self-initialise, not less.
+
+⚠ **The baseline on the Host is Dregora's and is meaningless now.** Re-run `--accept` once
+Homestead has booted and settled — after a deliberate pack change is exactly what it is for.
+Never to silence a report you have not read.
 
 **Backups.** Daily at 05:00 Bangkok, 14 kept, into `/srv/mc/backups`:
 
@@ -211,37 +228,27 @@ archive is consistent rather than hopeful, and saving is re-enabled by a trap ev
 archive fails. A world left with saving disabled silently discards everything until the next
 restart, which is worse than a failed backup.
 
-**Pre-generate the world.** Runs at the normal `7G` with everything else up, using
-Chunk Pregenerator `V1.12-2.5.1` (the version the pack's own readme names). The mod is
-temporary: install, generate, remove.
+**Pre-generate the world.** ⚠ **Not yet reworked for Homestead.**
 
-```bash
-cp /srv/mc/dist/chunkpregen-2.5.1.jar /srv/mc/pack/mods/   # then restart the container
-docker exec tapestopnight-mc rcon-cli "pregen gen startradius square s s b5000"
-docker exec tapestopnight-mc rcon-cli "pregen info ShowTaskList"    # progress
-docker exec tapestopnight-mc rcon-cli "pregen info stop"            # pause; resume with 'continue'
-```
+The procedure that was here used Chunk Pregenerator `V1.12-2.5.1`, a Forge 1.12.2 mod, and
+ended by setting a worldborder the Dregora readme demanded. Neither the mod nor the number
+applies to a Fabric 1.20.1 pack, so both have been removed rather than left to be followed.
 
-The task list survives a restart, so a stopped or crashed run resumes with
-`pregen info continue` rather than starting over.
+The Fabric equivalent is [Chunky](https://modrinth.com/mod/chunky), and the shape of the job is
+the same — install, generate, remove. Two things worth carrying over, because they were learned
+here and are not mod-specific:
 
-Two things the pack already gets right, worth knowing before you go looking for them:
-`fermiummixins` force-disables **OpenTerrainGenerator's own** pregenerator (not this mod)
-because it burns CPU when idle, and it enables a "Save To Disk Crash Improvement" guard
-specifically for pregeneration.
+- Run it at the normal heap with everything else up. A pregeneration pass with its own
+  larger heap is a second memory profile nobody is measuring.
+- `deploy/backup.sh world` refuses to run while a pregeneration task is active, on purpose:
+  `save-off` does not pause the generator, it just queues generated chunks in the heap next to
+  a JVM already near its cgroup limit. The Postgres half still runs. **That guard still
+  references the Chunk Pregenerator process and needs re-pointing at Chunky** before the first
+  pregeneration run.
 
-`deploy/backup.sh world` refuses to run while a pregen task is active, on purpose:
-`save-off` does not pause the generator, it just queues generated chunks in the heap next
-to a JVM already near its cgroup limit. The Postgres half still runs.
-
-Afterwards: remove the jar, restart, and set the worldborder the pack's readme demands —
-that number concerns the border, not the pregen radius, so a 5,000-block pregen does not
-break the in-world teleporters.
-
-```bash
-docker exec tapestopnight-mc rcon-cli "worldborder set 40000"
-```
-→ ADR-0012
+Check whether Homestead's own documentation asks for a worldborder before choosing a radius;
+Dregora's did, for reasons to do with its in-world teleporters, and assuming the same here
+would be inventing a requirement.
 
 ## Grant someone admin
 

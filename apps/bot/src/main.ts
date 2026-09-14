@@ -149,7 +149,7 @@ async function onCommand(interaction: ChatInputCommandInteraction): Promise<void
 
   /*
     Deferred before any work. A restart countdown runs for 30 seconds and an
-    OTG-era stop can take minutes; Discord kills an interaction that is not
+    A stop can take minutes; Discord kills an interaction that is not
     acknowledged within 3 seconds, and a deferred one lives for 15 minutes.
 
     Admin output is ephemeral: config values and failure detail are for the

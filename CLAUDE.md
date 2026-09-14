@@ -29,7 +29,7 @@ Compose project `tapestopnight-mc`, defined at `/srv/mc/repo/deploy/docker-compo
 
 | Container | What it is |
 |---|---|
-| `tapestopnight-mc` | the Game Server — Forge 1.12.2, RLCraft Dregora, `MEMORY=7G` |
+| `tapestopnight-mc` | the Game Server — Fabric 1.20.1, Homestead, `MEMORY=8G` |
 | `tapestopnight-db` | Postgres 16 — the Desired Config, source of truth |
 | `tapestopnight-socket-proxy` | scoped Docker access for the Control Plane |
 | `tapestopnight-poller` | the **only** thing that probes the Game Server |
@@ -75,14 +75,19 @@ Reasons are included on purpose. A bare prohibition gets rationalised past at
 
 **1. A server that looks hung for five minutes is normal. Never conclude "down"
 from an RCON timeout, and never add a healthcheck.** `max-tick-time=-1` is
-mandatory for this pack because OpenTerrainGenerator legitimately blocks the main
-thread for minutes during structure generation. The itzg image ships a healthcheck
-and it is deliberately disabled — with it on, a healthy server reports as failed
-and gets restarted mid-chunk-write. `stop_grace_period` is 10m for the same
-reason: cutting a world save short is how region files corrupt. See ADR-0005.
+mandatory because generating chunks for a 374-mod pack legitimately blocks the
+main thread for minutes, and first boot exceeds the image's 120s start period
+outright. The itzg image ships a healthcheck and it is deliberately disabled —
+with it on, a healthy server reports as failed and gets restarted
+mid-chunk-write. `stop_grace_period` is 10m for the same reason: cutting a
+world save short is how region files corrupt. See ADR-0005.
+
+(The original reason was OpenTerrainGenerator, which Dregora had and Homestead
+does not. The rule outlived the mod; do not treat the pack change as having
+retired it.)
 
 **2. Never run `docker compose build` on the Host.** A Next.js build peaks at
-1–2 GB of RSS beside a 7 GB JVM. The OOM killer picks the largest process, which
+1–2 GB of RSS beside an 8 GB JVM. The OOM killer picks the largest process, which
 is the Game Server, with players connected. Images are built in CI and pushed to
 GHCR; the Host only ever pulls. See ADR-0010.
 
@@ -91,11 +96,15 @@ the file is generated output. Your edit survives until the next Apply, then
 vanishes. Wanting to edit it is the reliable sign you are working the wrong stage
 of the pipeline. See ADR-0002.
 
-**4. `-Xmx7G`, the Aikar flags and the GC logging are load-bearing.** Java 8's G1
-does full GC on a single thread, so pauses scale with heap; the flags are the
-mitigation, not decoration. 8G was measured at 9.04 GiB RSS with zero players.
-Present numbers if you think this should change — changing it needs a new ADR.
-See ADR-0012.
+**4. `-Xmx8G`, the Aikar flags and the GC logging are load-bearing, and 8G is
+NOT YET MEASURED on this pack.** The Host has 12 GB and shares it; `mem_limit`
+is 10g and is deliberately not being raised to make the heap fit. Measure RSS
+once the server is up and idle — above ~9.6 GiB, drop to 7G rather than waiting
+for the OOM killer to choose the JVM with players connected. The Aikar flags
+are the mitigation, not decoration. The GC flags are the `-Xlog` spelling
+because the Java 8 ones were REMOVED in JDK 16 and a JVM given them refuses to
+boot. Present numbers if you think any of this should change — changing it
+needs a new ADR. See ADR-0018.
 
 ## `/srv/mc/repo` is not ground truth
 
@@ -134,7 +143,9 @@ Mechanical, so that no two agents have to negotiate.
 - **"Lag."** If `vmstat 1 5` shows swap-in > 0 or steal > 5%, `host-ops` answers
   first, unconditionally — a JVM diagnosis taken under memory pressure produces a
   confident, wrong story about mod ticks. Clean memory, one core pegged, low TPS
-  means a tick stall, which is `mc-server-ops`.
+  means a tick stall, which is `mc-server-ops`. Until the 8G heap has been
+  measured on Homestead, treat any swap-in on this Host as the heap question
+  first and the mod question second.
 - **"It's down."** Every "down" that arrives via Discord is a *poller claim*, not
   an observation. Not actionable until corroborated three ways: a direct SLP probe
   from the Host, `docker inspect` uptime, and a `latest.log` timestamp delta.

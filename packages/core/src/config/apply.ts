@@ -32,7 +32,7 @@ export interface ApplyOptions {
    */
   readonly docker?: DockerOptions | null;
   /**
-   * Matches stop_grace_period. A large OTG world genuinely takes minutes to
+   * Matches stop_grace_period. A large world genuinely takes minutes to
    * save, and cutting that short is how worlds corrupt.
    */
   readonly restartTimeoutSeconds?: number;

@@ -50,7 +50,7 @@ Apply these in order. The first one that fires decides, and you stop looking.
    always.
 2. **Game log age is large but the container is `Up` and memory is clean** →
    this is very probably normal. `max-tick-time=-1` is mandatory for this pack and
-   OTG structure generation legitimately blocks the main thread for minutes. Report
+   chunk generation legitimately blocks the main thread for minutes. Report
    it as *known-normal, not confirmed-down*, and route to `mc-server-ops` only if
    the operator wants it confirmed.
 3. **Someone says "down" but the container is `Up` and the log is advancing** →

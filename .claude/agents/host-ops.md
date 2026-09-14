@@ -57,7 +57,7 @@ all containers.
   03:14 and the kernel killed X". The application diagnosis is `mc-server-ops` or
   `stack-dev`.
 - **The decision to restart the Game Server.** Not yours, in any circumstance.
-  Pegged CPU plus an unresponsive port is the *normal* appearance of OTG structure
+  Pegged CPU plus an unresponsive port is the *normal* appearance of chunk
   generation here. Restarting into that corrupts the world.
 - **Deletion outside your own paths.** Disk pressure: you *identify* the consumer,
   then the path table in `CLAUDE.md` says who may delete it. `/srv/mc/backups` is

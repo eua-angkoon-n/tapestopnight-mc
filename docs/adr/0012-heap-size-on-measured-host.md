@@ -1,7 +1,13 @@
 ---
-status: accepted
+status: superseded
 supersedes: ADR-0011
+superseded-by: ADR-0018
 ---
+
+> **Superseded by [ADR-0018](./0018-heap-on-fabric-java17.md).** Kept unedited. The
+> measurements below were correct for what they measured — Forge 1.12.2 on Java 8 — and the
+> central argument, that Java 8's G1 has no parallel full GC, is about a runtime this server no
+> longer uses. A number that was right and then stopped being right is worth seeing.
 
 # Run at `-Xmx7G` on the measured 12 GB Host
 

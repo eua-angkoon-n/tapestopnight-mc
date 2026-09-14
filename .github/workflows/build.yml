@@ -2,7 +2,7 @@
 #
 # The Host only ever runs `docker compose pull && up -d`. The reason is a
 # specific failure mode, not tidiness: a Next.js production build peaks around
-# 1-2 GB, and running that beside a 7 GB JVM with players connected risks the
+# 1-2 GB, and running that beside an 8 GB JVM with players connected risks the
 # kernel's OOM killer picking the largest consumer, which is the game server.
 name: build
 

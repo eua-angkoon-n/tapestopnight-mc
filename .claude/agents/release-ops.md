@@ -37,18 +37,24 @@ It is a **partial, non-git copy**: `db/`, `deploy/`, `overlay/` only. No `.git`,
 `apps/`, no `docs/`. You cannot `git pull` it. Nothing records which commit it came
 from.
 
-Measured 2026-09-13 against GitHub `main`, three of eighteen files differ:
+Measured 2026-09-13 against GitHub `main`, three of eighteen files differed:
 
 | File | Direction | Note |
 |---|---|---|
-| `deploy/backup.sh` | **Host is AHEAD** | adds an RCON-reachability guard; exists nowhere else |
-| `deploy/modpack.lock` | Host behind | comment block only; `MODPACK_URL=""` in both |
-| `db/seed/0002-milestones.sql` | CRLF vs LF | identical text |
+| `deploy/backup.sh` | ~~Host is AHEAD~~ | **RESOLVED 2026-09-14** — pulled back into git |
+| `deploy/modpack.lock` | Host behind | now far behind: git holds the Homestead pin |
+| `db/seed/0002-milestones.sql` | CRLF vs LF | identical text at the time; git's copy has since been rewritten for advancements |
 
-**The `backup.sh` difference is a real, uncommitted fix** — it refuses the world
-backup when RCON does not answer, after an incident on 2026-09-10 where the backup
-proceeded blind and died at `save-all flush`. Any redeploy from git silently
-reintroduces that bug. Getting it committed is your first job.
+`deploy/backup.sh` was a real, uncommitted fix and is now committed: the
+RCON-reachability guard (from the 2026-09-10 incident, where the backup proceeded
+blind and died at `save-all flush`) plus the tar exit-code handling that stopped
+every healthy nightly world backup being reported as FAILED. Git's copy is the
+Host's copy with `LEVEL_NAME` moved to `Homestead`.
+
+**The direction has now reversed.** Git is ahead of the Host on essentially
+everything — the pack pin, the compose file, the seed, the overlay — because the
+Homestead migration was done in the repo first. `/srv/mc/repo` is still the
+Dregora deployment until the cutover runs.
 
 Compare properly — git blob hashes, not `diff` over an SSH `cat`, which normalises
 line endings and will lie to you:
@@ -64,7 +70,7 @@ gh api "repos/eua-angkoon-n/tapestopnight-mc/git/trees/main?recursive=1"
 `/var/log/tapestopnight-drift.log`. It compares against an **accepted baseline** at
 `/srv/mc/state/drift-baseline.sha256`, not against the pack — deliberately. Against
 the pristine zip the first real run reported 136 differences and not one was a human
-edit: Forge mods rewrite their own `.cfg` on first boot and srpmixins alone generates
+edit: mods rewrite their own config on first boot, and one of them alone generated
 96 loot tables. A daily report of 136 items is one nobody reads.
 
 ```bash

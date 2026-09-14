@@ -40,7 +40,7 @@ export interface StatusOptions {
   readonly port?: number;
   /**
    * Generous on purpose. A ping timing out does NOT mean the server is down:
-   * `max-tick-time=-1` is mandatory for this pack because OTG structure
+   * `max-tick-time=-1` is mandatory for this pack because chunk
    * generation legitimately blocks the main thread for minutes, and that looks
    * exactly like a hang. The verdict on "offline" is the container state plus
    * a TCP probe, never a timeout here.
