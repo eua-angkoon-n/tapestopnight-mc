@@ -59,3 +59,7 @@ apps/web/public/media/
 # apps/web/public/media/ above (ADR-0009): this is payload, not source. It is
 # a staging area, not a second home for the files.
 .media-staging/
+
+# One-shot bundle of the files /srv/mc/repo holds, built for a cutover.
+# Payload in the ADR-0009 sense: reproducible from the tree, not source.
+.repo-sync/
