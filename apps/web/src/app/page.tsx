@@ -50,7 +50,7 @@ export default async function HomePage() {
         <div className="scrim" />
 
         <div
-          className="wrap section-content"
+          className="wrap section-content on-media"
           style={{
             display: "flex",
             flexDirection: "column",
