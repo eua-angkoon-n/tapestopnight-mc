@@ -7,34 +7,30 @@
 # a URL and a SHA256, verified before anything is written.
 #
 # Why not just put the jar in the zip: the zip is UPSTREAM's. Rebuilding it to
-# add one mod would fork RLCraft Dregora onto a hash nobody else can verify,
-# and every future pack update would have to be re-forked the same way.
+# add one mod would fork the pack onto a hash nobody else can verify, and
+# every future pack update would have to be re-forked the same way.
 #
 # ⚠ Every entry here must be re-checked against MINECRAFT_VERSION and
-# FORGE_VERSION in modpack.lock on any pack upgrade. fetch-modpack.sh unpacks
+# LOADER_VERSION in modpack.lock on any pack upgrade. fetch-modpack.sh unpacks
 # with `unzip -o` and does NOT clear mods/, so these jars SURVIVE a pack
 # upgrade — including one to a Minecraft version they do not support, where a
 # stale jar stops the server booting at all.
 
-# ── Simple Voice Chat ────────────────────────────────────────────────
+# ── Empty, as of the move to Homestead ───────────────────────────────
 #
-# Proximity voice. Verified by inspecting the jar, not by reading a page:
+# The only entry this file ever had was Simple Voice Chat, added on top of
+# Dregora because Dregora did not ship it. Homestead does: it is one of the
+# pack's 374 mods, so pinning a second copy here would put two voicechat jars
+# in mods/ and Fabric refuses to start on a duplicate mod id.
 #
-#   Java 8 bytecode (class major 52)   matches JAVA_MAJOR=8
-#   acceptedMinecraftVersions [1.12.2] matches MINECRAFT_VERSION
-#   acceptableRemoteVersions  "*"      ← the reason this mod and not another
+# The mechanism stays. It is not dead code — it is the thing that makes
+# "which mods are on this server" answerable, and an empty list is a truthful
+# answer rather than an absent one. fetch-extra-mods.sh --check passes
+# trivially against it.
 #
-# That last one is what makes this safe to add to a live server. Forge 1.12.2
-# performs a mod-list handshake on connect and normally kicks a client whose
-# list differs; "*" means players WITHOUT the mod still join and play exactly
-# as before, they simply have no voice.
-#
-# The URL is Modrinth's. CurseForge serves the same mod under a DIFFERENT
-# hash — the two builds differ only in META-INF/MANIFEST.MF (CurseForge's is
-# one byte longer); all 1,633 entries have identical names and mcmod.info and
-# ForgeVoicechatMod.class are byte-identical. Players may install from either.
-# What has to match between client and server is the VERSION STRING, not the
-# file hash — so do not copy this SHA into the player-facing runbook.
+# Note what does NOT go away with the jar: overlay/config/voicechat/ still
+# carries our two settings (voice_host, force_voice_chat), the compose file
+# still publishes 24454/udp, and ufw still allows it. Voice chat is still
+# configured here; it is only no longer *installed* from here.
 EXTRA_MODS=(
-  "voicechat-forge-1.12.2-2.6.23.jar|https://cdn.modrinth.com/data/9eGKb6K1/versions/CZ4dKoMk/voicechat-forge-1.12.2-2.6.23.jar|fdb855282ee0a2d97bb108581e70ca8c8115e65f1830a6b06f2948cd29ffe399|5877794|1.12.2"
 )

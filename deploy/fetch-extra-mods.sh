@@ -2,8 +2,8 @@
 # Place the pinned extra mods into the Game Server's mods/ — ADR-0017.
 #
 # Same discipline as fetch-modpack.sh: verify the hash BEFORE anything lands
-# where Forge will load it. A jar that is not what we pinned is not a jar we
-# put in front of players.
+# where the loader will pick it up. A jar that is not what we pinned is not a
+# jar we put in front of players.
 #
 #   ./fetch-extra-mods.sh            # install anything missing or wrong
 #   ./fetch-extra-mods.sh --check    # report only, change nothing (exit 1 on drift)
@@ -11,8 +11,11 @@
 #
 # Idempotent: a correct jar already in place is left alone, so this is safe to
 # run on every deploy. `--remove` exists because "take the mod back out" is a
-# real operation — ADR-0012 leaves little memory headroom, and the back-out
+# real operation — this Host leaves little memory headroom, and the back-out
 # has to be one command rather than a half-remembered filename.
+#
+# The list is EMPTY as of Homestead, which bundles the one mod that used to be
+# here. See extra-mods.lock; every mode below handles that and says so.
 #
 set -euo pipefail
 
@@ -31,6 +34,17 @@ die() { printf '\n\033[31mFATAL: %s\033[0m\n' "$*" >&2; exit 2; }
 
 [[ -d "$MODS" ]] || die "$MODS does not exist — run fetch-modpack.sh first."
 
+# An empty list is a real, expected state, not a misconfiguration: the pack
+# currently ships everything we need. Said out loud, because "all extra mods
+# present and pinned" over a list of none reads as though something was
+# checked, and the next person deserves to know the difference.
+if [[ ${#EXTRA_MODS[@]} -eq 0 ]]; then
+  echo
+  echo "  no extra mods pinned — mods/ is exactly what came out of the verified zip"
+  echo "  mods : $(find "$MODS" -name '*.jar' | wc -l) jars in $MODS"
+  exit 0
+fi
+
 problems=0
 
 for entry in "${EXTRA_MODS[@]}"; do
@@ -41,8 +55,14 @@ for entry in "${EXTRA_MODS[@]}"; do
   #
   # These jars survive `fetch-modpack.sh --force`, because it unpacks with
   # `unzip -o` and never clears mods/. So a pack upgraded to a different
-  # Minecraft version would keep a jar built for the old one, and Forge would
-  # fail to start with an error that says nothing about this file.
+  # Minecraft version would keep a jar built for the old one, and the loader
+  # would fail to start with an error that says nothing about this file.
+  #
+  # Note what this guard cannot do: if the lock is emptied in the same change
+  # that upgrades the pack — which is exactly what the move to Homestead did —
+  # there is no entry left to compare, so `--remove` has nothing to remove and
+  # the stale jar stays. Deleting the pack directory outright is what clears
+  # it. Empty the lock AFTER removing, or delete $PACK and start clean.
   if [[ "$mcver" != "$MINECRAFT_VERSION" ]]; then
     die "$file is pinned for Minecraft $mcver but modpack.lock says $MINECRAFT_VERSION.
        The pack was upgraded and this mod has not been re-checked. Find the
@@ -112,8 +132,8 @@ for entry in "${EXTRA_MODS[@]}"; do
   # The container happens to run as root today, so a 0600 jar owned by root is
   # readable and nothing breaks. That is luck, not design: every other jar in
   # here is ubuntu:ubuntu 644, and the itzg image supports being told a UID/GID
-  # — the day somebody sets one, Forge would fail to read exactly one mod and
-  # the error would name a class, not a permission.
+  # — the day somebody sets one, the loader would fail to read exactly one mod
+  # and the error would name a class, not a permission.
   chmod 644 "$target"
   chown --reference="$MODS" "$target" 2>/dev/null || true
 

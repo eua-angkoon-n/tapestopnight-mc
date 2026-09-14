@@ -8,32 +8,45 @@
  */
 
 :root {
-  /* Dark Fantasy. Warm blacks, not blue-blacks: RLCraft's world is soil,
-     torchlight and rust, and a cold grey would read as a dashboard. */
-  --bg: #0e0c0b;
-  --surface: #1a1614;
-  --surface-raised: #221d1a;
-  --border: #2e2724;
-  --border-strong: #453a34;
+  /* Cozy. Paper and daylight: Homestead's world is wheat, timber and
+     kitchen-garden green, and a dark ground would read as a dungeon. */
+  --bg: #faf6ee;
+  --surface: #ffffff;
+  --surface-raised: #f1e9db;
+  --border: #ded2bf;
+  --border-strong: #c4b49a;
 
-  --text: #e8e0d5;
-  --muted: #9a8f84;
-  --faint: #6b6259;
+  --text: #2e2a24;
+  --muted: #6b6155;
+  --faint: #7d7060;
 
-  --accent: #c75b2a; /* ember */
-  --accent-hot: #e07440;
-  --danger: #a32e23;
+  /* Terracotta, kept from the ember family so the brand does not lurch — but
+     two steps darker, because the same hue that passed contrast on a black
+     ground fails on a cream one. --accent is for fills and glyphs (3:1 is the
+     bar for those); --accent-hot is the LINK colour and clears 4.5:1. */
+  --accent: #c2683c;
+  --accent-hot: #a8542e;
+  --accent-deep: #8e4524; /* pressed / hover on a filled button */
+  --sage: #6e8b5e;
+  --danger: #a8412f;
 
   /* Edit Tier signalling. Colour is REINFORCEMENT ONLY — the tiers differ
      structurally (ADR-0007), because ember, amber and red all sit in one hue
      zone and roughly 8% of men with red-green colour vision deficiency cannot
      separate them. A signal that stops someone destroying the world must not
      depend on hue. */
-  --tier-guarded: #d9a21b;
+  --tier-guarded: #b8801a;
   --tier-locked: #5b6470; /* deliberately cool, so it cannot be confused
-                             with the warm accent or the danger red */
+                             with the warm accent or the danger red. Unchanged
+                             by the light rebuild: it clears 5.5:1 on cream and
+                             the reason it is cool has nothing to do with the
+                             ground being dark. */
 
-  --ok: #4e8b57;
+  --ok: #43794f;
+  /* The pill wash behind an online badge. A token because it is --ok at 12%,
+     and the last time it was written as a literal it survived a palette change
+     that moved --ok out from under it. */
+  --ok-wash: rgba(67, 121, 79, 0.12);
 
   /* Thai needs more room than English. Vowels stack above the line and tone
      marks stack above those; at 1.5 they collide with the line above. */
@@ -59,7 +72,7 @@
 }
 
 html {
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 body {
@@ -118,17 +131,17 @@ kbd,
   padding: 0 1.25rem;
 }
 
-/* The hero's atmosphere. A texture, not a photograph: there is no Dregora
-   artwork to hand yet, and this degrades to a plain dark panel rather than a
-   broken image. Swapping in real art later is a background-image change. */
+/* The hero's atmosphere. A texture, not a photograph, so it degrades to a
+   plain warm panel rather than a broken image. Superseded on the landing page
+   by .section-tall + real footage; kept for surfaces that have no video. */
 .hero {
   position: relative;
   overflow: hidden;
   border-bottom: 1px solid var(--border);
   background:
-    radial-gradient(120% 90% at 15% 0%, #2a1a12 0%, transparent 60%),
-    radial-gradient(100% 80% at 90% 20%, #1d1a26 0%, transparent 55%),
-    linear-gradient(180deg, #14100e 0%, var(--bg) 100%);
+    radial-gradient(120% 90% at 15% 0%, #f6e7c8 0%, transparent 60%),
+    radial-gradient(100% 80% at 90% 20%, #e6efdd 0%, transparent 55%),
+    linear-gradient(180deg, #fffdf8 0%, var(--bg) 100%);
 }
 
 .hero::after {
@@ -137,7 +150,7 @@ kbd,
   position: absolute;
   inset: 0;
   pointer-events: none;
-  opacity: 0.35;
+  opacity: 0.12;
   background-image: url("data:image/svg+xml;utf8,\
 <svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'>\
 <filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/>\
@@ -176,19 +189,22 @@ kbd,
 
 .btn:hover {
   border-color: var(--accent);
-  background: #2a221d;
+  background: #f7eee0;
 }
 
+/* Filled with --accent-hot, not --accent: white on #c2683c is 3.9:1 and
+   near-black on it is 4.2:1, so neither label passes on the lighter fill.
+   White on #a8542e is 5.2:1. */
 .btn-primary {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #14100e;
+  background: var(--accent-hot);
+  border-color: var(--accent-hot);
+  color: #fff8f0;
   font-weight: 600;
 }
 
 .btn-primary:hover {
-  background: var(--accent-hot);
-  border-color: var(--accent-hot);
+  background: var(--accent-deep);
+  border-color: var(--accent-deep);
 }
 
 /* Focus must stay obvious on every surface. The tier design already relies on
@@ -234,11 +250,11 @@ kbd,
   /* Translucent over the hero video, opaque-ish once scrolled past it. The
      fallback matters: backdrop-filter is unsupported in some browsers and
      without a solid-enough background the nav text lands on raw video. */
-  background: rgba(14, 12, 11, 0.82);
+  background: rgba(250, 246, 238, 0.85);
 }
 @supports (backdrop-filter: blur(10px)) {
   .site-nav {
-    background: rgba(14, 12, 11, 0.55);
+    background: rgba(250, 246, 238, 0.62);
     backdrop-filter: blur(12px) saturate(120%);
   }
 }
@@ -281,8 +297,13 @@ kbd,
 
   The gradient reproduces the template's bottom fade so the section hands off
   into the page instead of ending on a hard cut. The flat wash is a
-  legibility floor: Dregora footage is bright in places, and body text over
-  unmodified video fails contrast wherever the frame happens to be light.
+  legibility floor.
+
+  Note the direction: under the dark theme this wash was BLACK, because the
+  text was light and the footage was bright in places. The hero text is now
+  near-black on cream, so the wash has to be CREAM — a dark scrim under dark
+  text is not a weaker fix, it is the wrong one, and the Homestead footage is
+  a sunlit wheat field that would swallow the type without it.
 */
 .scrim {
   position: absolute;
@@ -290,8 +311,8 @@ kbd,
   z-index: 1;
   pointer-events: none;
   background:
-    linear-gradient(to top, var(--bg) 0%, rgba(14, 12, 11, 0.55) 28%, transparent 62%),
-    rgba(14, 12, 11, 0.42);
+    linear-gradient(to top, var(--bg) 0%, rgba(250, 246, 238, 0.72) 28%, transparent 62%),
+    rgba(250, 246, 238, 0.45);
 }
 
 .section-content {
@@ -385,7 +406,7 @@ kbd,
   position: absolute;
   inset: 0;
   z-index: 0;
-  background-image: url("/media/dregora-poster.jpg");
+  background-image: url("/media/homestead-poster.jpg");
   background-size: cover;
   background-position: center;
 }

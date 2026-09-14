@@ -1,3 +1,13 @@
+---
+status: accepted
+note: the milestone half is superseded by ADR-0020
+---
+
+> **Half of this is superseded by [ADR-0020](./0020-milestones-from-advancements.md).** The
+> Chat Bridge still reads the log and writes over RCON — that decision is untouched. Milestones
+> no longer come from Better Questing: that mod was Dregora's, and Dregora unloaded the
+> advancement system, which is the constraint this ADR reasons from. Homestead does neither.
+
 # The Chat Bridge reads the log file and writes over RCON — and milestones come from Better Questing, not advancements
 
 Three requests arrived together: announce big achievements in Discord, let people

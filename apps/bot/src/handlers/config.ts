@@ -1,6 +1,7 @@
 import { EmbedBuilder, MessageFlags, type ChatInputCommandInteraction } from "discord.js";
 import { eq } from "drizzle-orm";
 
+import { ACCENT, LOCKED } from "@tapestopnight/core/brand";
 import { configHistory, configKey, type Database } from "@tapestopnight/core/db";
 import { applyDesiredConfig, decodeUnicodeEscapes, tierFor } from "@tapestopnight/core/config";
 
@@ -17,8 +18,6 @@ import { countdownThen } from "./server.ts";
  * on none.
  */
 
-const ACCENT = 0xc75b2a;
-const LOCKED_COLOUR = 0x8a3b32;
 
 export async function handleConfigGet(
   interaction: ChatInputCommandInteraction,
@@ -39,7 +38,7 @@ export async function handleConfigGet(
 
   const rule = tierFor(key);
   const embed = new EmbedBuilder()
-    .setColor(rule.tier === "LOCKED" ? LOCKED_COLOUR : ACCENT)
+    .setColor(rule.tier === "LOCKED" ? LOCKED : ACCENT)
     .setTitle(`\`${row.key}\``)
     .addFields(
       { name: "ค่าปัจจุบัน", value: row.value ? `\`${row.value}\`` : "_(ว่าง)_" },

@@ -1,0 +1,42 @@
+{
+  "permissions": {
+    "deny": [
+      "Bash(docker stop family-ledger*)",
+      "Bash(docker rm family-ledger*)",
+      "Bash(docker restart family-ledger*)",
+      "Bash(docker kill family-ledger*)",
+      "PowerShell(docker stop family-ledger*)",
+      "PowerShell(docker rm family-ledger*)",
+      "PowerShell(docker restart family-ledger*)",
+      "PowerShell(docker kill family-ledger*)"
+    ],
+    "allow": [
+      "Bash(.claude/bin/vps-read.sh *)"
+    ],
+    "ask": [
+      "Bash(.claude/bin/vps-do.sh *)",
+      "PowerShell(.claude/bin/vps-do.sh *)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell.exe",
+            "args": [
+              "-NoProfile",
+              "-ExecutionPolicy",
+              "Bypass",
+              "-File",
+              "${CLAUDE_PROJECT_DIR}/.claude/hooks/guard.ps1"
+            ],
+            "timeout": 15
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -38,8 +38,8 @@ export async function handlePlayersList(
     names = await listPlayers(env.rcon);
   } catch (err) {
     // Deliberately NOT reported as "the server is down". A timeout here is
-    // indistinguishable from OTG generating chunks, which max-tick-time=-1
-    // makes a normal multi-minute event for this modpack.
+    // indistinguishable from the server generating chunks, which
+    // max-tick-time=-1 makes a normal multi-minute event for this modpack.
     await interaction.editReply(
       "ถามรายชื่อผู้เล่นไม่สำเร็จ — อาจเป็นเพราะเซิร์ฟกำลังสร้างภูมิประเทศอยู่ " +
         "ซึ่งเป็นเรื่องปกติของ modpack นี้ ไม่ได้แปลว่าเซิร์ฟล่ม " +

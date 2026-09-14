@@ -24,7 +24,8 @@ export interface PublicServerInfo {
   readonly modpackName: string;
   readonly modpackVersion: string;
   readonly minecraftVersion: string;
-  readonly forgeVersion: string;
+  readonly loaderName: string;
+  readonly loaderVersion: string;
   readonly serverAddress: string;
   readonly downloadUrl: string | null;
   /** Where the hero's Discord button goes. Null renders an honest note, not a dead button. */
@@ -68,7 +69,8 @@ export async function loadPublicData(): Promise<{
           modpackName: serverInfo.modpackName,
           modpackVersion: serverInfo.modpackVersion,
           minecraftVersion: serverInfo.minecraftVersion,
-          forgeVersion: serverInfo.forgeVersion,
+          loaderName: serverInfo.loaderName,
+          loaderVersion: serverInfo.loaderVersion,
           serverAddress: serverInfo.serverAddress,
           downloadUrl: serverInfo.downloadUrl,
           discordUrl: serverInfo.discordUrl,
@@ -102,7 +104,8 @@ export async function loadPublicData(): Promise<{
             modpackName: i.modpackName,
             modpackVersion: i.modpackVersion,
             minecraftVersion: i.minecraftVersion,
-            forgeVersion: i.forgeVersion,
+            loaderName: i.loaderName,
+            loaderVersion: i.loaderVersion,
             serverAddress: i.serverAddress,
             downloadUrl: i.downloadUrl,
             discordUrl: i.discordUrl,

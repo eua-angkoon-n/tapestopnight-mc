@@ -90,7 +90,19 @@ export const serverInfo = pgTable("server_info", {
   modpackName: text("modpack_name").notNull(),
   modpackVersion: text("modpack_version").notNull(),
   minecraftVersion: text("minecraft_version").notNull(),
-  forgeVersion: text("forge_version").notNull(),
+
+  /**
+   * The mod loader, as two columns rather than one.
+   *
+   * This was `forge_version` until the move to Homestead, which runs on Fabric.
+   * A column called `forge_version` holding a Fabric loader version is the kind
+   * of quiet lie that survives for years, so the name went with the pack — and
+   * `loaderName` exists because the public page and `/info modpack` both used
+   * to print the word "Forge" as a literal. Now the row says what it is and
+   * neither surface has to guess.
+   */
+  loaderName: text("loader_name").notNull(),
+  loaderVersion: text("loader_version").notNull(),
   /** What a player types. The SRV record makes this the bare apex (ADR-0001). */
   serverAddress: text("server_address").notNull(),
   downloadUrl: text("download_url"),
@@ -162,7 +174,7 @@ export const serverStatusCache = pgTable("server_status_cache", {
   /**
    * Container state, independent of the ping. Offline is concluded from this
    * plus a TCP probe — NEVER from an RCON or ping timeout, because a
-   * legitimate OTG generation hang looks identical and max-tick-time=-1 makes
+   * legitimate chunk-generation hang looks identical and max-tick-time=-1 makes
    * those hangs a normal part of this modpack.
    */
   containerState: text("container_state"),
@@ -184,7 +196,7 @@ export const chatSource = pgEnum("chat_source", ["game", "web", "discord"]);
  *
  * One spine rather than three point-to-point paths. The Game Server is reached
  * ONLY by the bot draining this table over RCON — the web app must never open
- * an RCON connection inside a request, because `max-tick-time=-1` means OTG can
+ * an RCON connection inside a request, because `max-tick-time=-1` means chunk generation can
  * legitimately block the main thread for minutes (README rule 3) and the chat
  * box would hang indistinguishably from being broken.
  */
@@ -313,10 +325,10 @@ export const playerMilestone = pgTable(
 /**
  * The curated answer to "which of these is worth interrupting people for".
  *
- * Dregora has 403 quests and the stats file counts every entity ever killed;
- * announcing all of it would be noise nobody reads. Policy, therefore seeded
- * as source in db/seed/ rather than typed into a table by hand — the same
- * reasoning that makes the Edit Tiers a seed file.
+ * Vanilla 1.20.1 alone ships over a hundred advancements and Homestead adds
+ * its own on top; announcing all of them would be noise nobody reads. Policy,
+ * therefore seeded as source in db/seed/ rather than typed into a table by
+ * hand — the same reasoning that makes the Edit Tiers a seed file.
  */
 export const notableMilestone = pgTable(
   "notable_milestone",

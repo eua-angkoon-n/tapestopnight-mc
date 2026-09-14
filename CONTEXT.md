@@ -1,17 +1,19 @@
 # Tapestopnight Minecraft
 
-The RLCraft Dregora game server on tapestopnight.com and the Control Plane that operates it.
+The Homestead game server on tapestopnight.com and the Control Plane that operates it.
 This file is a glossary and nothing else — no implementation detail, no decisions. Decisions
 live in `docs/adr/`.
 
 ## Language
 
 **Modpack**: A named, versioned bundle of Minecraft mods and configs that the server and every
-player's client must run identically. Here: RLCraft Dregora v1.1.2b.
+player's client must run identically. Here: Homestead 1.3.7 — Minecraft 1.20.1 on Fabric.
 _Avoid_: mod, pack, modlist
 
-**Game Server**: The Forge process serving Minecraft on port 25565. One per Modpack.
-_Avoid_: server (ambiguous with the box), instance
+**Game Server**: The Minecraft server process on port 25565, running under the Modpack's mod
+loader. One per Modpack. Say "the Game Server", not the loader's name — it was Forge until
+Homestead and is Fabric now, and the word changing is precisely why this entry avoids it.
+_Avoid_: server (ambiguous with the box), instance, Forge, Fabric
 
 **Host**: The Contabo VPS itself (`217.216.111.122`), which runs the Game Server, the Control
 Plane, and the pre-existing ledger system.
@@ -47,10 +49,15 @@ Discord. Every message becomes a row; the bot is the only process that moves row
 Server. See ADR-0015.
 _Avoid_: relay, webhook, integration
 
-**Milestone**: Something a player did that is worth announcing — read from Better Questing's
-progress file or the vanilla statistics file, never from an advancement, because this pack
-unloads the advancement system entirely.
-_Avoid_: achievement, advancement (both name a system that does not run here)
+**Milestone**: Something a player did that is worth announcing — read from the world's
+advancement files, or from the vanilla statistics file for something that ships no advancement.
+Curated: only what `notable_milestone` allows is recorded at all.
+An advancement is what the game writes; a Milestone is one we chose to announce.
+_Avoid_: achievement (nothing is called that here)
+
+Note for anyone reading old commits: until Homestead this entry said the opposite — advancements
+were unusable because Dregora unloaded the advancement system to save memory, so Milestones came
+from Better Questing instead. Both that mod and that constraint are gone.
 
 **Player Link**: The recorded pairing of one Discord account with one Minecraft name. Made by
 address match or by a typed code, and required before anyone may speak from the website.

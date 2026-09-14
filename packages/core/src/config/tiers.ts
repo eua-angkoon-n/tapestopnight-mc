@@ -9,7 +9,27 @@
  * this?", and ADR-0003 keeps locked keys visible precisely so that an admin
  * reads the answer instead of going to look for the file over SSH.
  *
- * Every claim below comes from the pack's own SERVER README OR DIE.txt.
+ * ── What changed with Homestead, and what is still owed ──────────────────
+ *
+ * The previous table's claims were sourced from Dregora's own
+ * "SERVER README OR DIE.txt" and named OpenTerrainGenerator, Ice and Fire's
+ * fairy rings and RLCraft's difficulty balance. None of that exists here, so
+ * carrying the reasons forward would have left an admin reading a confident
+ * explanation of a mod that is not installed.
+ *
+ * The reasons below are therefore written from what is true of Minecraft
+ * 1.20.1 and of Homestead in general. Where a number is a judgement rather
+ * than a documented requirement it says so, instead of citing a readme that
+ * was never read.
+ *
+ * What the pack's own server.properties actually ships, for the three that
+ * were open questions: `view-distance=12`, `difficulty=normal`, and
+ * `simulation-distance` is absent entirely — the pack's file is a 2020-era
+ * template and predates the key, so the server will use its own default of 10.
+ * The entry for it below is therefore dormant until somebody adds the key.
+ *
+ * Keys that simply stopped existing in 1.18+ (snooper-enabled,
+ * max-build-height, texture-pack) have been dropped rather than re-tiered.
  */
 
 export type Tier = "FREE" | "GUARDED" | "LOCKED";
@@ -25,20 +45,21 @@ export const TIERS: Readonly<Record<string, TierRule>> = {
   "level-name": {
     tier: "LOCKED",
     reason:
-      "เปลี่ยนแล้ว Forge จะสร้างโลกใหม่ว่างเปล่า โลกเดิมกลายเป็นไฟล์ทิ้ง " +
-      "เสียทั้ง progress ผู้เล่นและเวลา pre-generation ทั้งหมด กู้ไม่ได้",
+      "เปลี่ยนแล้วเซิร์ฟจะสร้างโลกใหม่ว่างเปล่า โลกเดิมกลายเป็นไฟล์ทิ้ง " +
+      "เสียทั้ง progress ผู้เล่นและเวลาสร้างแผนที่ทั้งหมด กู้ไม่ได้",
   },
   "level-type": {
     tier: "LOCKED",
     reason:
-      "ต้องเป็น OTG เพื่อให้ OpenTerrainGenerator ทำงาน ถ้าเปลี่ยน โลกจะกลับไปใช้ " +
-      "generation แบบวานิลลา ภูมิประเทศ Dregora หายทั้งหมด",
+      "Homestead วางภูมิประเทศผ่าน Tectonic และ TerraBlender บนพื้นฐานของ " +
+      "minecraft:normal เปลี่ยนเป็น flat หรือ large_biomes แล้วไบโอมและ " +
+      "โครงสร้างของ pack จะไม่ตรงกับโลกที่ผู้เล่นอยู่",
   },
   "max-tick-time": {
     tier: "LOCKED",
     reason:
-      "ต้องเป็น -1 เพราะโครงสร้างใหญ่ของ OTG ใช้เวลาสร้างเป็นนาที ถ้าตั้งค่าอื่น " +
-      "Forge จะเข้าใจผิดว่าเซิร์ฟแครชแล้วฆ่าตัวเองกลางการสร้างโลก",
+      "ต้องเป็น -1 เพราะการสร้าง chunk ของ pack นี้ใช้เวลานานกว่าค่ามาตรฐาน " +
+      "ถ้าตั้งค่าอื่น watchdog จะเข้าใจผิดว่าเซิร์ฟแครชแล้วฆ่าตัวเองกลางการเขียนโลก",
   },
   "server-port": {
     tier: "LOCKED",
@@ -63,22 +84,34 @@ export const TIERS: Readonly<Record<string, TierRule>> = {
   "allow-flight": {
     tier: "LOCKED",
     reason:
-      "ต้องเป็น true ไม่งั้นผู้เล่นที่ขี่สัตว์บินหรือใช้ fairy ring จะถูกเซิร์ฟเตะออก",
+      "ต้องเป็น true ไม่งั้นผู้เล่นที่ใช้ elytra ขี่สัตว์บิน หรือของจาก mod ที่ " +
+      "ทำให้ลอยตัว จะถูกเซิร์ฟเตะออกด้วยข้อหาโกง ทั้งที่เล่นตามปกติ",
   },
   "enable-command-block": {
     tier: "LOCKED",
-    reason: "ต้องเป็น true ไม่งั้น villager จะไม่ spawn ในโครงสร้างที่ generate ขึ้นมา",
+    reason:
+      "ต้องเป็น true เพราะโครงสร้างและรางวัลเควสต์ของ pack ใช้ command block " +
+      "ปิดแล้วบางโครงสร้างจะสร้างไม่ครบและเควสต์บางอันจะให้ของไม่ได้",
   },
   "max-world-size": {
     tier: "LOCKED",
     reason:
-      "ลดต่ำกว่า 20,000 แล้ว teleporter ในเกมจะพัง ตามที่ readme ของ modpack เตือนไว้",
+      "กำหนดขอบเขตที่โลกสร้างต่อได้ ลดลงหลังจากผู้เล่นออกไปไกลแล้ว จะทำให้ " +
+      "พื้นที่ที่สร้างไว้แล้วอยู่นอกขอบและเดินทางกลับเข้าไปไม่ได้",
+  },
+  "sync-chunk-writes": {
+    tier: "LOCKED",
+    reason:
+      "ต้องเป็น true การปิดทำให้การเขียน chunk ไม่รอดิสก์ยืนยัน ซึ่งเร็วขึ้นจริง " +
+      "แต่ไฟไหม้กลางคันเมื่อไหร่ region file เสียทั้งก้อน แลกไม่คุ้ม",
   },
 
   // ── GUARDED: legitimate to change, but needs a deliberate confirmation ──
   difficulty: {
     tier: "GUARDED",
-    reason: "RLCraft ปรับสมดุลมาบนความยาก 3 ลดแล้วเกมจะง่ายกว่าที่ผู้ออกแบบตั้งใจ",
+    reason:
+      "Homestead เป็น pack แนวอยู่สบาย ไม่ได้ปรับสมดุลรอบความยากสูงแบบ pack สาย " +
+      "เอาชีวิตรอด เปลี่ยนได้ตามใจกลุ่มผู้เล่น แต่กระทบทุกคนบนเซิร์ฟพร้อมกัน",
   },
   pvp: {
     tier: "GUARDED",
@@ -93,8 +126,14 @@ export const TIERS: Readonly<Record<string, TierRule>> = {
   "view-distance": {
     tier: "GUARDED",
     reason:
-      "readme ระบุว่า 10 คือค่าที่เข้ากันได้เต็มที่ ลดเป็น 8 หรือ 6 ประหยัดแรมได้ " +
-      "แต่ทำให้ระบบ spawn/despawn มอนสเตอร์เพี้ยน",
+      "ระยะที่เซิร์ฟส่ง chunk ให้ผู้เล่นเห็น เป็นตัวกินแรมและ CPU ที่ใหญ่ที่สุด " +
+      "ตัวหนึ่ง เครื่องนี้มีแรมจำกัด เพิ่มแล้วควรดู TPS และ RSS ประกอบเสมอ",
+  },
+  "simulation-distance": {
+    tier: "GUARDED",
+    reason:
+      "ระยะที่ของในโลกยังทำงานจริง — พืชโต เตาหลอม สัตว์เดิน ลดแล้วประหยัดแรง " +
+      "เครื่องมาก แต่ฟาร์มที่อยู่ไกลผู้เล่นจะหยุดทำงานโดยไม่มีอะไรบอก",
   },
   "spawn-protection": {
     tier: "GUARDED",
@@ -104,12 +143,17 @@ export const TIERS: Readonly<Record<string, TierRule>> = {
     tier: "GUARDED",
     reason: "เปิดแล้วคนที่ไม่อยู่ในรายชื่อเข้าไม่ได้ทันที รวมถึงคนที่กำลังเล่นอยู่",
   },
-
+  "enforce-whitelist": {
+    tier: "GUARDED",
+    reason:
+      "เปิดแล้วคนที่ถูกถอดออกจาก whitelist จะถูกเตะออกทันทีระหว่างเล่น " +
+      "ไม่ใช่แค่เข้าใหม่ไม่ได้",
+  },
   gamemode: {
     tier: "GUARDED",
     reason:
-      "0 = survival ซึ่งเป็นโหมดที่ RLCraft ออกแบบมา เปลี่ยนเป็น creative " +
-      "จะทำให้ทั้งเซิร์ฟได้ของฟรีหมด",
+      "survival คือโหมดที่ pack ออกแบบมา เปลี่ยนเป็น creative จะทำให้ทั้งเซิร์ฟ " +
+      "ได้ของฟรีหมดและเควสต์เสียความหมาย",
   },
   hardcore: {
     tier: "GUARDED",
@@ -124,12 +168,18 @@ export const TIERS: Readonly<Record<string, TierRule>> = {
   "allow-nether": {
     tier: "GUARDED",
     reason:
-      "Dregora มีเนเธอร์ที่ออกแบบเองและ RLCraft ใช้เนเธอร์เป็นส่วนหนึ่งของ " +
-      "เส้นทางความก้าวหน้า ปิดแล้วผู้เล่นจะตันกลางเกม",
+      "เนเธอร์เป็นส่วนหนึ่งของเส้นทางความก้าวหน้าและของเควสต์หลายอัน " +
+      "ปิดแล้วผู้เล่นจะตันกลางเกมโดยไม่มีอะไรอธิบายว่าทำไม",
   },
   "op-permission-level": {
     tier: "GUARDED",
     reason: "กำหนดว่า op ทำอะไรได้บ้าง ลดแล้วคำสั่งจัดการเซิร์ฟบางส่วนจะใช้ไม่ได้",
+  },
+  "function-permission-level": {
+    tier: "GUARDED",
+    reason:
+      "ระดับสิทธิ์ที่ datapack function รันได้ ลดแล้วเควสต์และโครงสร้างที่เรียก " +
+      "คำสั่งระดับสูงจะเงียบ ๆ ทำงานไม่ครบ",
   },
   "enable-query": {
     tier: "GUARDED",
@@ -141,23 +191,40 @@ export const TIERS: Readonly<Record<string, TierRule>> = {
     tier: "GUARDED",
     reason: "เปิดแล้วผู้เล่นที่ต่อผ่าน VPN บางแบบจะเข้าไม่ได้",
   },
+  "enforce-secure-profile": {
+    tier: "GUARDED",
+    reason:
+      "บังคับให้ข้อความแชทมีลายเซ็นของ Mojang ปิดแล้วผู้เล่นที่ใช้ mod แชท " +
+      "บางตัวจะเข้าได้ราบรื่นขึ้น แต่เซิร์ฟจะยืนยันไม่ได้ว่าใครพิมพ์อะไรจริง",
+  },
 
   // ── FREE: cosmetic or routine ──
   "network-compression-threshold": {
     tier: "FREE",
     reason: "ขนาดแพ็กเก็ตที่เริ่มบีบอัด เป็นการจูนประสิทธิภาพ ไม่กระทบกติกาเกม",
   },
-  "snooper-enabled": {
+  "entity-broadcast-range-percentage": {
     tier: "FREE",
-    reason: "ส่งสถิติการใช้งานให้ Mojang ปิดไว้ก็ได้ ไม่กระทบอะไร",
+    reason:
+      "ระยะที่ผู้เล่นเห็นสัตว์และของที่ตกอยู่ ลดแล้วเบาเครื่องขึ้นและไม่กระทบ " +
+      "กติกา แค่ของจะโผล่ให้เห็นตอนเข้าใกล้กว่าเดิม",
   },
-
+  "hide-online-players": {
+    tier: "FREE",
+    reason:
+      "ซ่อนรายชื่อผู้เล่นจากหน้ารายการเซิร์ฟ — หน้าเว็บและบอทอ่านจากที่นี่ " +
+      "เปิดแล้วทั้งสองที่จะไม่มีรายชื่อให้แสดง",
+  },
+  "broadcast-rcon-to-ops": {
+    tier: "FREE",
+    reason: "ส่งผลลัพธ์คำสั่งที่มาทาง RCON ให้ op เห็นในเกม",
+  },
   motd: { tier: "FREE", reason: "ข้อความที่แสดงในหน้ารายการเซิร์ฟของผู้เล่น" },
   "max-players": {
     tier: "FREE",
     reason:
-      "จำนวนผู้เล่นพร้อมกันสูงสุด เครื่องนี้รัน heap 7 GB (ADR-0012) " +
-      "ซึ่งรองรับได้สบายราว 10-15 คน ตั้งสูงกว่านั้นได้แต่ควรดู TPS ประกอบ",
+      "จำนวนผู้เล่นพร้อมกันสูงสุด เครื่องนี้รัน heap 8 GB ซึ่งเป็นเพดานของ Host " +
+      "ไม่ใช่ค่าที่เหลือเฟือ ตั้งสูงได้แต่ควรดู TPS และ RSS ประกอบ",
   },
   "player-idle-timeout": {
     tier: "FREE",
@@ -175,23 +242,28 @@ export const TIERS: Readonly<Record<string, TierRule>> = {
 /**
  * Fail closed: an unrecognised key is LOCKED, per ADR-0003.
  *
- * The keys the pack ships that are deliberately LEFT to this default, and why:
+ * The keys 1.20.1 ships that are deliberately LEFT to this default, and why:
  *
- *   level-seed, generator-settings, generate-structures, hellworld
- *       Load-bearing for how OTG builds Dregora. Changing any of them risks a
+ *   level-seed, generator-settings, generate-structures
+ *       Load-bearing for how the world was built. Changing any of them risks a
  *       world that generates differently from the one players are living in.
- *   max-build-height
- *       1.12.2 cannot exceed 256, and lowering it strands anything built above.
+ *   initial-enabled-packs, initial-disabled-packs
+ *       Which datapacks the world starts with. Homestead ships quests and
+ *       worldgen as datapacks; turning one off mid-world is not a setting, it
+ *       is a content removal.
  *   server-ip
  *       Must stay empty so the server binds every interface inside the
  *       container. Setting it is a fast way to make the port unreachable.
  *   use-native-transport
  *       Linux epoll transport. Disabling it costs performance for no gain.
- *   resource-pack, resource-pack-sha1, texture-pack
+ *   resource-pack, resource-pack-sha1, resource-pack-prompt,
+ *   require-resource-pack
  *       Serving a resource pack is a reasonable future feature, but a wrong
- *       sha1 stops clients joining outright, and this project deleted the
- *       pack's client-side resources/ tree as unused (ADR-0009). Locked until
- *       something actually wires it up.
+ *       sha1 stops clients joining outright. Locked until something actually
+ *       wires it up.
+ *   rate-limit, text-filtering-config, log-ips, enable-jmx-monitoring
+ *       Operational knobs with no in-game meaning, and log-ips in particular
+ *       interacts with the address matching Player Link depends on (ADR-0016).
  */
 export function tierFor(key: string): TierRule {
   return (

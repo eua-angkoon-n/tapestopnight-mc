@@ -59,7 +59,7 @@ export async function say(opts: RconOptions, message: string): Promise<void> {
 /**
  * Ask the server to save and stop.
  *
- * Preferred over killing the container: a large OTG world takes minutes to
+ * Preferred over killing the container: a large world takes minutes to
  * write, and cutting that short is how worlds corrupt.
  */
 export async function requestStop(opts: RconOptions): Promise<void> {

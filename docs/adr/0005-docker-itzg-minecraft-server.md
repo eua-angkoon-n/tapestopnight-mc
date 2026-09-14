@@ -1,3 +1,8 @@
+---
+status: accepted
+note: premises updated for Homestead — see "What the move to Homestead changed"
+---
+
 # Game Server runs as a Docker container on `itzg/minecraft-server`
 
 Of the Linux options we chose Docker via `itzg/minecraft-server` (`TYPE=FORGE`,
@@ -25,3 +30,40 @@ system. Mitigation: a `docker-socket-proxy` sidecar scoped to
 apparent hangs *normal* during OTG generation, the container gets **no Docker healthcheck**
 and a generous `stop_grace_period` (several minutes) so saving a large OTG world is never cut
 short.
+
+
+## What the move to Homestead changed
+
+Every concrete value in this ADR was a Dregora value. The **choice** of
+`itzg/minecraft-server` survives the pack change; the arguments for it do not, and one of them
+inverts:
+
+| | Dregora | Homestead |
+|---|---|---|
+| tag | `itzg/minecraft-server:java8` | `:java17` |
+| `TYPE` | `FORGE` | `FABRIC` |
+| `VERSION` | `1.12.2` | `1.20.1` |
+| loader pin | `FORGE_VERSION` | `FABRIC_LOADER_VERSION` |
+
+- **"It solves Java 8" is now "it solves Java 17"** — the same argument, and still the main one:
+  the image ships the right JRE, and getting the right JRE onto a box by hand is how a runtime
+  ends up undocumented. 17 rather than 21 because the pack's own `variables.txt` says
+  `RECOMMENDED_JAVA_VERSION=17`; see ADR-0018.
+- **It runs the loader's own installer**, which is why the pack directory can hold a server pack
+  that does not bundle a launcher.
+- `SKIP_SERVER_PROPERTIES: "true"` is **unchanged and still mandatory** (ADR-0002). No
+  server.properties-shaped env var may be added to this service, on any loader.
+- The socket-proxy argument is unchanged.
+
+**The no-healthcheck decision stands, but not for the reason written above.** That reason was
+OpenTerrainGenerator, which Homestead does not contain. The conclusion outlives it: first boot
+of a 374-mod pack exceeds the image's 120s start period outright, and Homestead builds terrain
+through Tectonic and TerraBlender, which still stalls long enough to fail a 30s probe under
+load. What a healthcheck buys is an automatic restart; what it costs is that restart arriving
+mid chunk-write. That trade was bad on Dregora and it is bad here. `max-tick-time=-1` and
+`stop_grace_period: 10m` stay for the same reason.
+
+Do not read the disappearance of OTG as having retired the rule. → CLAUDE.md, prohibition 1.
+
+The heap and GC flags moved too, and needed more than a value change — the Java 8 GC flags were
+*removed* in JDK 16 and would have stopped the container booting at all. → ADR-0018.

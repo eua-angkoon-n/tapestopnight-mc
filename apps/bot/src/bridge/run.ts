@@ -4,7 +4,7 @@
  * One spine: everything that crosses becomes a `chat_message` row, and this
  * process is the only thing that moves rows out of it. The web app writes rows
  * and reads rows and never opens an RCON connection — `max-tick-time=-1` means
- * OTG can legitimately block the Game Server's main thread for minutes
+ * chunk generation can legitimately block the Game Server's main thread for minutes
  * (README rule 3), and a request handler awaiting RCON would hang the chat box
  * in a way a visitor cannot tell apart from the site being broken.
  *
@@ -214,7 +214,7 @@ export function startBridge(client: Client, db: Database): () => void {
 
   // ── milestones ──────────────────────────────────────────────────────────
   async function announceMilestones(): Promise<void> {
-    const found = await scanMilestones(db, env.bridge.worldDir, rcon);
+    const found = await scanMilestones(db, env.bridge.worldDir, env.packDir, rcon);
     if (found.length === 0) return;
 
     /*

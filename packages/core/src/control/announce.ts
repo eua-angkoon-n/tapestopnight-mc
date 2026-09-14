@@ -3,10 +3,10 @@ import { say, type RconOptions } from "./rcon.ts";
 /**
  * Warn the people who are actually in the game before kicking them.
  *
- * A restart drops every connected player. They are in a hardcore modpack where
- * a disconnect mid-fight can mean a dead character, and nothing else in this
- * system talks to them — a Discord message reaches whoever is reading Discord,
- * which is not the same set of people.
+ * A restart drops every connected player. A disconnect mid-build loses
+ * whatever was in hand and drops anyone in a cave or the Nether back at their
+ * last save, and nothing else in this system talks to them — a Discord message
+ * reaches whoever is reading Discord, which is not the same set of people.
  *
  * Lives in core because both surfaces restart the Game Server and both should
  * announce it the same way (ADR-0006).

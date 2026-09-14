@@ -1,6 +1,7 @@
 import { EmbedBuilder, type ChatInputCommandInteraction } from "discord.js";
 import { desc } from "drizzle-orm";
 
+import { DOWN, OK, WARN } from "@tapestopnight/core/brand";
 import { serverStatusCache, type Database } from "@tapestopnight/core/db";
 import { announceRestart, inspect, restart, start, stop } from "@tapestopnight/core/control";
 
@@ -13,15 +14,12 @@ import { env } from "../env.ts";
  * taste:
  *
  * 1. `max-tick-time=-1` is mandatory, so a server that fails to answer for
- *    minutes is NORMAL during OTG generation. Nothing here concludes "down"
- *    from a timeout.
- * 2. Saving a large OTG world takes minutes, so every stop is graceful and
- *    generously timed. Killing it is how worlds corrupt.
+ *    minutes is NORMAL while chunks are being generated. Nothing here
+ *    concludes "down" from a timeout.
+ * 2. Saving a large world takes minutes, so every stop is graceful and
+ *    generously timed. Killing it is how region files corrupt.
  */
 
-const OK = 0x4a8f5f;
-const WARN = 0xc8912a;
-const DOWN = 0x8a3b32;
 
 function ago(then: Date | null): string {
   if (!then) return "ไม่เคยเห็นออนไลน์";
@@ -105,7 +103,8 @@ export async function handleStart(interaction: ChatInputCommandInteraction): Pro
   await start(env.docker);
   await interaction.editReply(
     "สั่งเปิดเซิร์ฟเวอร์แล้ว — **บูตครั้งแรกใช้เวลาหลายนาทีและจะดูเหมือนค้าง** " +
-      "นั่นคืออาการปกติของ OTG ที่กำลังสร้างภูมิประเทศ ใช้ `/server status` ดูได้เรื่อย ๆ",
+      "modpack นี้มีม็อดหลายร้อยตัวและกำลังสร้างภูมิประเทศอยู่ นั่นคืออาการปกติ " +
+      "ใช้ `/server status` ดูได้เรื่อย ๆ",
   );
 }
 
@@ -150,7 +149,7 @@ export async function handleStop(interaction: ChatInputCommandInteraction): Prom
     skip,
     "ปิดเซิร์ฟเวอร์",
     // 600 s matches stop_grace_period. The image turns SIGTERM into an RCON
-    // stop, so this is a graceful save, and a big OTG world genuinely needs
+    // stop, so this is a graceful save, and a big world genuinely needs
     // the minutes.
     () => stop(env.docker, 600),
     "ปิดเซิร์ฟเวอร์เรียบร้อย — เซฟโลกครบก่อนปิดแล้ว",

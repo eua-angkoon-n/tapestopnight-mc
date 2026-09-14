@@ -192,7 +192,15 @@ try {
     handlePlayersList,
     (t) => !t.includes("ถามรายชื่อผู้เล่นไม่สำเร็จ") && t.length > 0,
   );
-  await run("/info modpack", handleInfoModpack, (t, c) => c.embeds === 1 && t.includes("Forge"));
+  // Checks the loader NAME from the row rather than the literal "Forge" this
+  // asserted until the move to Homestead — which would now fail on a server
+  // that is working correctly, and is exactly the assertion a pack change
+  // should not be able to break quietly.
+  await run(
+    "/info modpack",
+    handleInfoModpack,
+    (t, c) => c.embeds === 1 && (t.includes("Fabric") || t.includes("Forge") || t.includes("NeoForge")),
+  );
   await run("/info ip", handleInfoIp, (t) => t.includes("tapestopnight.com"));
   await run("/info download", handleInfoDownload);
   await run("/info icon", handleInfoIcon, (t, c) => c.files === 1 || t.includes("ยังไม่ได้ตั้งไอคอน"));

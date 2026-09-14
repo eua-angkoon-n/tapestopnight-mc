@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { IBM_Plex_Sans_Thai, Cinzel } from "next/font/google";
+import { IBM_Plex_Sans_Thai, Fraunces } from "next/font/google";
 
 import { SiteHeader } from "@/components/SiteHeader";
 
@@ -19,11 +19,16 @@ const body = IBM_Plex_Sans_Thai({
 });
 
 /*
- * Display serif for LATIN-ONLY text. Cinzel has no Thai glyphs, which is
+ * Display serif for LATIN-ONLY text. Fraunces has no Thai glyphs, which is
  * exactly why it is confined to the server name and numbers and never used for
- * body copy.
+ * body copy — the same rule that governed Cinzel before it.
+ *
+ * Cinzel was a Roman inscriptional face: all-caps by construction, which suited
+ * dark fantasy and did nothing for Thai (ADR-0007 — Thai has no capitals, so
+ * hierarchy comes from size and weight). Fraunces has a real lowercase and a
+ * soft, slightly wonky axis that reads as warm rather than carved.
  */
-const display = Cinzel({
+const display = Fraunces({
   subsets: ["latin"],
   weight: ["500", "600"],
   display: "swap",
@@ -31,9 +36,9 @@ const display = Cinzel({
 });
 
 export const metadata: Metadata = {
-  title: "RLCraft Dregora — tapestopnight.com",
+  title: "Homestead — tapestopnight.com",
   description:
-    "เซิร์ฟเวอร์ RLCraft Dregora v1.1.2b — Minecraft 1.12.2 Forge. ดูสถานะเซิร์ฟเวอร์ ไอพี และลิงก์ดาวน์โหลด modpack",
+    "เซิร์ฟเวอร์ Homestead — Minecraft 1.20.1 Fabric. ดูสถานะเซิร์ฟเวอร์ ไอพี และลิงก์ดาวน์โหลด modpack",
 
   /*
    * The browser tab icon is the Server Icon — the same upload players see in
