@@ -36,9 +36,11 @@ runtime this server no longer uses. Deleting either would hide that, and the nex
 deserves to see a wrong premise corrected, and a right answer expiring, rather than a history
 where every call was right.
 
-**0018 is the one to watch.** It is the only ADR here that records a decision taken *without*
-the measurement it needed, and it carries a table that is not filled in yet. Until somebody
-writes a measured RSS into it, `-Xmx8G` is provisional.
+**0018 got its measurement, and then its decision.** It began as the only ADR here that
+recorded a decision taken *without* the measurement it needed. The table is filled in now —
+9.24 GiB idle, 9.505 GiB peak under a three-dimension pregeneration, zero full GCs — and on
+2026-09-14 the operator chose to keep 8G with that in front of them. What remains open in it
+is deliberate: the drop to 7G or 5G is written down as the first move if swap ever appears.
 
 Measured facts about the Host live in [`docs/host-inventory.md`](../host-inventory.md), not in
 an ADR — they are observations, not decisions.
