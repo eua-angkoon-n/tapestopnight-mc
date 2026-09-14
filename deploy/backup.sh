@@ -97,8 +97,20 @@ backup_world() {
     # Trading a night's backup for an OOM kill mid-generation is the wrong way
     # round — especially as the pre-pregen world is already archived and
     # pregenerated terrain can simply be regenerated.
-    if docker exec "${MC_CONTAINER}" rcon-cli "pregen info ShowTaskList" 2>/dev/null \
-         | grep -qiE "[1-9][0-9]* Tasks"; then
+    #
+    # The command is Chunky's. It used to be `pregen info ShowTaskList`, which
+    # is Chunk Pregenerator's — a Forge 1.12.2 mod that left with Dregora. The
+    # guard did not fail loudly when the pack changed; it simply stopped
+    # matching anything, which is the shape of bug that leaves a safety check
+    # worthless while still looking present in the file.
+    #
+    # The pattern is matched against real output, captured from a running
+    # pregeneration rather than taken from documentation:
+    #
+    #   [Chunky] Task running for minecraft:overworld. Processed: 59 chunks
+    #   (0.02%), ETA: 6:00:35, Rate: 18.2 cps, Current: 3, 7
+    if docker exec "${MC_CONTAINER}" rcon-cli "chunky progress" 2>/dev/null \
+         | grep -qiE "Task running"; then
       log "SKIPPING the world backup: a pre-generation is running."
       log "  save-off would queue generated chunks in the heap next to a JVM"
       log "  already near its limit. The Postgres backup still ran."

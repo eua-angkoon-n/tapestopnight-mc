@@ -278,27 +278,55 @@ archive is consistent rather than hopeful, and saving is re-enabled by a trap ev
 archive fails. A world left with saving disabled silently discards everything until the next
 restart, which is worse than a failed backup.
 
-**Pre-generate the world.** ⚠ **Not yet reworked for Homestead.**
+**Pre-generate the world.** Chunky ships **with** Homestead — `Chunky-1.3.146.jar`,
+already in `mods/`, nothing to install or remove. That is the one thing that got
+simpler: the Dregora procedure installed Chunk Pregenerator, ran it, and took it out
+again.
 
-The procedure that was here used Chunk Pregenerator `V1.12-2.5.1`, a Forge 1.12.2 mod, and
-ended by setting a worldborder the Dregora readme demanded. Neither the mod nor the number
-applies to a Fabric 1.20.1 pack, so both have been removed rather than left to be followed.
+Generating chunks while a player walks is the worst moment to do it, and this pack
+builds terrain through Tectonic and TerraBlender with C2ME threading it. Pregeneration
+moves that work to a time nobody is online.
 
-The Fabric equivalent is [Chunky](https://modrinth.com/mod/chunky), and the shape of the job is
-the same — install, generate, remove. Two things worth carrying over, because they were learned
-here and are not mod-specific:
+```bash
+R() { docker exec tapestopnight-mc rcon-cli "$1"; }
 
-- Run it at the normal heap with everything else up. A pregeneration pass with its own
-  larger heap is a second memory profile nobody is measuring.
-- `deploy/backup.sh world` refuses to run while a pregeneration task is active, on purpose:
-  `save-off` does not pause the generator, it just queues generated chunks in the heap next to
-  a JVM already near its cgroup limit. The Postgres half still runs. **That guard still
-  references the Chunk Pregenerator process and needs re-pointing at Chunky** before the first
-  pregeneration run.
+R "chunky world minecraft:overworld"
+R "chunky spawn"          # centre on spawn, not 0,0 — the pack may move it
+R "chunky radius 5000"
+R "chunky shape square"
+R "chunky quiet 300"      # or the log fills with progress lines
+R "chunky selection"      # read it back before starting
+R "chunky start"
 
-Check whether Homestead's own documentation asks for a worldborder before choosing a radius;
-Dregora's did, for reasons to do with its in-world teleporters, and assuming the same here
-would be inventing a requirement.
+R "chunky progress"       # ETA and rate
+R "chunky pause"          # saves progress; `continue` resumes
+R "chunky cancel"         # stops and forgets the task
+```
+
+Measured on this Host at radius 5000: **18.2 chunks/second, ETA 6 hours**, and CPU at
+631% — which is all six vCPU. **The Host is shared** (CLAUDE.md), so a pregeneration
+slows the whole machine, not just Minecraft. Run it when that is acceptable, and say
+so if anyone else depends on the box.
+
+To slow it down deliberately, `globalExecutorParallelism` in `config/c2me.toml`
+controls how many threads chunk generation gets. It needs a restart, so `chunky pause`
+first and `chunky continue` after — Chunky's `continueOnRestart` is `false`, and a
+task will not resume by itself.
+
+**The nether is eight times cheaper than it looks.** One nether block is eight
+overworld blocks, so a nether radius of 625 already covers a 5000 overworld radius.
+Generating the nether at 5000 would cover the equivalent of 40,000 overworld blocks,
+which is mostly wasted time and disk.
+
+`deploy/backup.sh world` refuses to run while a pregeneration is active, on purpose:
+`save-off` does not pause the generator, it queues generated chunks in the heap next
+to a JVM already near its cgroup limit. The Postgres half still runs. That guard asks
+Chunky — it asked Chunk Pregenerator until 2026-09-14, and had been quietly matching
+nothing since the pack changed.
+
+⚠ Whether Homestead wants a worldborder is **not established**. Dregora's readme
+demanded 40,000 because of its in-world teleporters; assuming the same here would be
+inventing a requirement. Check the pack's own documentation before setting one.
 
 ## Grant someone admin
 
