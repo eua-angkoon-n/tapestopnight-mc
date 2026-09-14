@@ -13,6 +13,8 @@ export default async function Forbidden() {
   // "get the role", the other is "sign in again, the role is fine".
   const session = await auth();
   const couldNotCheck = session?.adminCheckFailed ?? false;
+  const rateLimited = session?.adminCheckRateLimited ?? false;
+  const retryIn = session?.adminCheckRetryInSeconds ?? 0;
 
   return (
     <main className="wrap" style={{ padding: "5rem 1.25rem", maxWidth: "34rem" }}>
@@ -25,11 +27,27 @@ export default async function Forbidden() {
             ระบบถาม Discord ว่าคุณถือ role อะไรอยู่ไม่สำเร็จ จึงปฏิเสธไว้ก่อนเพื่อความปลอดภัย
             — <strong>ไม่ได้แปลว่า role ของคุณผิด</strong>
           </p>
-          <p className="faint" style={{ fontSize: "0.9rem" }}>
-            มักแก้ได้ด้วยการออกจากระบบแล้วเข้าใหม่ เพราะการเข้าใหม่จะขอสิทธิ์อ่าน role
-            จาก Discord อีกครั้ง ถ้ายังไม่หาย แปลว่าเป็นฝั่ง Discord เอง
-            รายละเอียดจะอยู่ใน log ของเว็บแล้ว
-          </p>
+          {rateLimited ? (
+            /*
+              Deliberately the opposite advice from the outage case. A rate
+              limit is Discord saying "you have asked too often"; signing in
+              again forces another immediate ask, which is the one thing that
+              cannot help and can extend the limit.
+            */
+            <p className="faint" style={{ fontSize: "0.9rem" }}>
+              Discord จำกัดจำนวนครั้งที่ถามได้ และตอนนี้ถามถี่เกินไป
+              {retryIn > 0 ? ` ระบบจะลองใหม่ให้เองในอีกราว ${retryIn} วินาที` : " ระบบจะลองใหม่ให้เองในอีกสักครู่"}
+              {" "}— <strong>อย่าเพิ่งออกจากระบบแล้วเข้าใหม่</strong>{" "}
+              เพราะการเข้าใหม่จะบังคับให้ถาม Discord ทันที ซึ่งทำให้ถูกจำกัดนานขึ้น
+              รอแล้วรีเฟรชหน้านี้พอ
+            </p>
+          ) : (
+            <p className="faint" style={{ fontSize: "0.9rem" }}>
+              มักแก้ได้ด้วยการออกจากระบบแล้วเข้าใหม่ เพราะการเข้าใหม่จะขอสิทธิ์อ่าน role
+              จาก Discord อีกครั้ง ถ้ายังไม่หาย แปลว่าเป็นฝั่ง Discord เอง
+              รายละเอียดจะอยู่ใน log ของเว็บแล้ว
+            </p>
+          )}
         </>
       ) : (
         <>
