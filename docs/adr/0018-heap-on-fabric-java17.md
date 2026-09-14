@@ -89,17 +89,58 @@ docker stats --no-stream tapestopnight-mc
 | 9.0 – 9.6 GiB | Passes, with no headroom. Record it as the ceiling; do not raise `max-players` without watching TPS. |
 | > 9.6 GiB | **Drop to 7G and restart.** Do not raise `mem_limit`. |
 
+## Measured, 2026-09-14
+
+**9.24 GiB — the middle band. It passes, and it has no headroom.**
+
+First boot of Homestead 1.3.7 on `itzg/minecraft-server:java17`, Fabric loader
+0.18.4, zero players, world freshly generated:
+
+| | |
+|---|---|
+| RSS, settled | **9.238 – 9.241 GiB** of the 10 GiB `mem_limit` (92.4%) |
+| Host memory available | 1,375 MB of 11,960 |
+| Swap in / out (`vmstat`) | **0 / 0** — nothing is swapping |
+| Boot to `Done` | 33.5 s |
+| SLP response | 1–9 ms, protocol 763 |
+
+Two readings of the same number, and both are worth keeping:
+
+**It is safe right now.** Nothing swaps, the server answers a status ping in
+single-digit milliseconds, and `oom_score_adj: -500` still biases the kernel
+away from this container. The gate did not trip.
+
+**It is 760 MB from the cgroup limit with nobody playing.** Every connected
+player adds heap, and `max-players` is 10. This is the ceiling, not a
+comfortable operating point, and `max-players` should not be raised without
+watching TPS and RSS together.
+
+Note how closely this tracks ADR-0012's Dregora figure — 9.04 GiB at 8G with
+zero players, on a completely different pack, loader and JDK. That is not a
+coincidence: `-XX:+AlwaysPreTouch` in the Aikar flags makes the JVM touch the
+whole 8 GiB heap at startup, so RSS is heap-plus-overhead from the first
+second and the pack barely enters into it. **The heap size is the measurement**
+— which also means the honest way to buy headroom here is to reduce it, not to
+tune the pack.
+
+### There is more room below than ADR-0012 suggested
+
+Dregora's 7G was the bottom of what Forge 1.12.2 could live with. Homestead's
+own `variables.txt` ships `JAVA_ARGS="-Xmx5G -Xms5G"`, so its author builds for
+5G. Dropping to 7G would return roughly a gigabyte to the Host at, on that
+evidence, no cost to the pack.
+
+That is a decision for the operator rather than a conclusion of this ADR: 8G was
+chosen deliberately and the gate it was given did not trip. Recorded so that the
+option is visible the first time somebody sees swap on this Host.
+
 The threshold is deliberately a back-out rather than an alarm, in the same shape ADR-0017 used
 for the voice chat jar. An OOM kill on this Host does not degrade the Game Server, it selects
 it: `oom_score_adj: -500` biases the kernel away, but the JVM is still the largest process by a
 wide margin, and every connected player is dropped at once.
 
-⚠ **This table is not yet filled in.** Until somebody writes a measured number into it, treat
-`-Xmx8G` as provisional, and treat any swap-in on this Host as the heap question first.
-
-If it does come back high, note that dropping to 7G is not the only move available: the pack
-runs at 5G by its author's own default, so there is more room below than ADR-0012's Dregora
-numbers would suggest.
+Measured on 2026-09-14 — see below. `-Xmx8G` is no longer provisional, but it is at the top of
+its band, so any swap-in on this Host remains the heap question first.
 
 ## What carries forward unchanged
 
