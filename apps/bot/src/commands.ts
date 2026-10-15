@@ -1,5 +1,4 @@
 import {
-  PermissionFlagsBits,
   REST,
   Routes,
   SlashCommandBuilder,
@@ -14,8 +13,22 @@ import {
  *
  * There is deliberately NO command that can stop, reboot or shut down the
  * Host. Only the container. The prior art this replaces had a `pc_shutdown`
- * that powered off a home PC; the equivalent here would take the unrelated
- * ledger system offline with it.
+ * that powered off a home PC; the equivalent here would take an unrelated
+ * system on the same machine offline with it.
+ *
+ * ── What the Minecraft tree had and this does not ────────────────────
+ *
+ * `/config get|set|apply` is gone. It was built around `server.properties` —
+ * one flat file of typed keys with a tier table deciding which were safe to
+ * edit from Discord. Project Zomboid's settings are split across an INI and a
+ * 1000-line `SandboxVars.lua`, and the two keys people would most want to
+ * change, `Mods=` and `WorkshopItems=`, are REWRITTEN by the container's
+ * entrypoint from `docker-compose.yml` on every start — so a bot that edited
+ * them would be silently overwritten. Re-adding it means designing for that,
+ * not porting the old one.
+ *
+ * `/info modpack|download|icon` is gone with the modpack it described.
+ * `/info setup` replaces it with the thing that actually blocks a player here.
  */
 
 /**
@@ -26,22 +39,16 @@ import {
  * subcommand without deciding its tier is visible in review.
  *
  * `/server status`, `/players list` and everything under `/info` are readable
- * by anyone in an allowed channel — they expose what a server list ping
- * already tells the whole internet.
+ * by anyone in an allowed channel — they expose only what someone who can
+ * already connect would see.
  *
  * `start`, `stop` and `restart` are admin because they disconnect everyone
- * currently playing. The plan named only `/config` as admin-only; extending it
- * to the lifecycle commands is a judgement call, and the alternative — anyone
- * in the channel being able to stop the server mid-session — is not one worth
- * shipping.
+ * currently playing.
  */
 export const ADMIN_ONLY: ReadonlySet<string> = new Set([
   "server start",
   "server stop",
   "server restart",
-  "config get",
-  "config set",
-  "config apply",
 ]);
 
 export function buildCommands(): RESTPostAPIChatInputApplicationCommandsJSONBody[] {
@@ -81,55 +88,10 @@ export function buildCommands(): RESTPostAPIChatInputApplicationCommandsJSONBody
   const info = new SlashCommandBuilder()
     .setName("info")
     .setDescription("ข้อมูลเซิร์ฟเวอร์สำหรับผู้เล่น")
-    .addSubcommand((s) => s.setName("modpack").setDescription("modpack และเวอร์ชันที่ต้องใช้"))
-    .addSubcommand((s) => s.setName("ip").setDescription("ที่อยู่ที่ใช้เข้าเซิร์ฟเวอร์"))
-    .addSubcommand((s) => s.setName("download").setDescription("ลิงก์ดาวน์โหลด modpack"))
-    .addSubcommand((s) => s.setName("icon").setDescription("ไอคอนเซิร์ฟเวอร์"));
+    .addSubcommand((s) => s.setName("setup").setDescription("ต้องลงอะไรบ้างก่อนเข้าเซิร์ฟ"))
+    .addSubcommand((s) => s.setName("ip").setDescription("ที่อยู่ที่ใช้เข้าเซิร์ฟเวอร์"));
 
-  const config = new SlashCommandBuilder()
-    .setName("config")
-    .setDescription("ตั้งค่าเซิร์ฟเวอร์ (แอดมิน)")
-    // A visibility hint, NOT the security boundary. Discord cannot express
-    // "only holders of DISCORD_ADMIN_ROLE_ID", so this hides the group from
-    // ordinary members and every invocation is re-checked against ADR-0004
-    // server-side regardless of what Discord decided to show.
-    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
-    .addSubcommand((s) =>
-      s
-        .setName("get")
-        .setDescription("ดูค่าปัจจุบันของคีย์หนึ่ง")
-        .addStringOption((o) =>
-          o.setName("key").setDescription("เช่น motd").setRequired(true).setAutocomplete(true),
-        ),
-    )
-    .addSubcommand((s) =>
-      s
-        .setName("set")
-        .setDescription("แก้ค่า — ยังไม่มีผลจนกว่าจะ /config apply")
-        .addStringOption((o) =>
-          o.setName("key").setDescription("คีย์ที่จะแก้").setRequired(true).setAutocomplete(true),
-        )
-        .addStringOption((o) => o.setName("value").setDescription("ค่าใหม่").setRequired(true))
-        .addBooleanOption((o) =>
-          o
-            .setName("confirm")
-            .setDescription("จำเป็นสำหรับคีย์ระดับ GUARDED")
-            .setRequired(false),
-        ),
-    )
-    .addSubcommand((s) =>
-      s
-        .setName("apply")
-        .setDescription("เขียนไฟล์และรีสตาร์ทเซิร์ฟ — ผู้เล่นจะหลุด")
-        .addBooleanOption((o) =>
-          o
-            .setName("now")
-            .setDescription("ข้ามการนับถอยหลัง — ใช้เมื่อจำเป็นจริง ๆ เท่านั้น")
-            .setRequired(false),
-        ),
-    );
-
-  return [server, players, info, config].map((c) => c.toJSON());
+  return [server, players, info].map((c) => c.toJSON());
 }
 
 /**
@@ -138,9 +100,9 @@ export function buildCommands(): RESTPostAPIChatInputApplicationCommandsJSONBody
  * Guild-scoped, not global: guild commands appear immediately, global ones can
  * take up to an hour, and this bot serves exactly one guild.
  *
- * The PUT is a wholesale replacement, which is how ADR-0008's migration
- * requirement is met — DISCO NIGHT's stale commands are removed by being
- * absent from the new list rather than by being deleted one at a time.
+ * The PUT is a wholesale replacement, which is also the migration: the
+ * Minecraft tree's `/config` and `/info modpack` disappear by being absent from
+ * this list rather than by being deleted one at a time.
  */
 export async function registerCommands(
   token: string,

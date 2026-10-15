@@ -28,48 +28,56 @@ export const env = {
    */
   adminRoleId: required("DISCORD_ADMIN_ROLE_ID"),
 
+  /**
+   * Project Zomboid's RCON.
+   *
+   * 27015, not Minecraft's 25575. The host defaults to the PZ container's name
+   * on the shared `pz-ops` network — the two systems live in separate compose
+   * projects, so without that network this bot cannot reach the server at all
+   * and RCON's loopback publish on the Host is not reachable from a container.
+   *
+   * This is the ONLY channel to the running server. PZ has no Server List Ping,
+   * so there is no cheap probe to read instead and no Status Poller writing a
+   * cache — `/server status` and `/players list` both come through here.
+   */
   rcon: {
-    host: optional("RCON_HOST", "mc"),
-    port: Number(optional("RCON_PORT", "25575")),
+    host: optional("RCON_HOST", "tapestopnight-pz"),
+    port: Number(optional("RCON_PORT", "27015")),
     password: required("RCON_PASSWORD"),
   },
 
   docker: {
     baseUrl: optional("DOCKER_PROXY_URL", "http://socket-proxy:2375"),
-    container: optional("MC_CONTAINER_NAME", "tapestopnight-mc"),
+    container: optional("PZ_CONTAINER_NAME", "tapestopnight-pz"),
   },
-
-  slp: {
-    host: optional("MC_SLP_HOST", "mc"),
-    port: Number(optional("MC_SLP_PORT", "25565")),
-  },
-
-  packDir: optional("PACK_DIR", "/pack"),
 
   /**
-   * The Chat Bridge.
+   * How players reach the server.
    *
-   * Both paths are under PACK_DIR, which the bot already mounts for Apply, so
-   * the bridge adds no new access to the Host. `level-name=Homestead` is what
-   * makes the world directory that and not `world` — which also means this
-   * default and the seeded `level-name` have to move together.
+   * A bare IP and port, not a domain: PZ speaks UDP, so it cannot sit behind
+   * Caddy or the Cloudflare proxy, and the server is unlisted (`PUBLIC=false`)
+   * so nobody finds it in the in-game browser either. Everyone types this in by
+   * hand, which is exactly why /info ip exists.
    */
-  bridge: {
-    logPath: optional("MC_LOG_PATH", `${optional("PACK_DIR", "/pack")}/logs/latest.log`),
-    worldDir: optional("MC_WORLD_DIR", `${optional("PACK_DIR", "/pack")}/Homestead`),
-    /** How often the log is read. Chat feels live at two seconds and costs nothing. */
-    pollMs: Number(optional("BRIDGE_POLL_MS", "2000")),
-    /**
-     * How often the milestone files are re-read. Deliberately slow: each scan
-     * asks the Game Server to flush the world to disk first, because Better
-     * Questing writes its progress on save rather than on completion.
-     */
-    scanMs: Number(optional("MILESTONE_SCAN_MS", "60000")),
-  },
+  serverAddress: optional("PZ_SERVER_ADDRESS", "217.216.111.122"),
+  serverPort: optional("PZ_SERVER_PORT", "16261"),
+
   publicBaseUrl: optional("PUBLIC_BASE_URL", "https://tapestopnight.com"),
 
   /** Lead time before a restart actually happens. */
   restartCountdownSeconds: Number(optional("RESTART_COUNTDOWN_SECONDS", "30")),
+
+  /**
+   * How long Docker waits for the server to save on the way down.
+   *
+   * 180 s matches `stop_grace_period: 3m` in the Zomboid compose file, and that
+   * number is load-bearing: the entrypoint traps SIGTERM, writes `quit` into
+   * the server console FIFO — which is what saves the world — and waits. The
+   * first clean shutdown measured took 15 seconds, over Docker's 10-second
+   * default, which is why the grace period exists at all. Never shorten this
+   * below the compose value.
+   */
+  stopTimeoutSeconds: Number(optional("PZ_STOP_TIMEOUT_SECONDS", "180")),
 } as const;
 
 export type Env = typeof env;
