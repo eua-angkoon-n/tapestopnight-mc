@@ -404,10 +404,17 @@ services:
       DOCKER_PROXY_URL: http://socket-proxy:2375
       PZ_CONTAINER_NAME: tapestopnight-pz
 
-      # What /info ip hands out. A bare address and port, typed in by hand: PZ
-      # speaks UDP so it cannot sit behind Caddy or the Cloudflare proxy, and
-      # the server is unlisted, so it never appears in the in-game browser.
-      PZ_SERVER_ADDRESS: ${PZ_SERVER_ADDRESS:-217.216.111.122}
+      # What /info ip hands out.
+      #
+      # A hostname, but NOT a proxied one. pz.tapestopnight.com is a DNS-only
+      # A record straight at the Host: PZ speaks UDP, and Cloudflare's proxy
+      # carries HTTP/HTTPS only, so turning the orange cloud on for this record
+      # breaks every connection immediately. The server is also unlisted, so it
+      # never appears in the in-game browser -- everyone types this in by hand.
+      #
+      # The port still has to be typed too. PZ has no SRV support, so there is
+      # no Minecraft-style trick for hiding it behind the name.
+      PZ_SERVER_ADDRESS: ${PZ_SERVER_ADDRESS:-pz.tapestopnight.com}
       PZ_SERVER_PORT: "16261"
 
       # Matches stop_grace_period: 3m in the Zomboid compose file. Docker
