@@ -54,10 +54,21 @@ export const env = {
   /**
    * How players reach the server.
    *
-   * A bare IP and port, not a domain: PZ speaks UDP, so it cannot sit behind
-   * Caddy or the Cloudflare proxy, and the server is unlisted (`PUBLIC=false`)
-   * so nobody finds it in the in-game browser either. Everyone types this in by
-   * hand, which is exactly why /info ip exists.
+   * A hostname, but a DNS-only one pointed straight at the Host. PZ speaks
+   * UDP and Cloudflare's proxy carries HTTP/HTTPS only, so this record must
+   * never get the orange cloud -- that breaks every connection at once, and
+   * the symptom is "the server is down" rather than anything about DNS.
+   *
+   * The port is still given separately: PZ has no SRV support, so unlike the
+   * Minecraft server there is no way to hide it behind the name. And the
+   * server is unlisted (`PUBLIC=false`), so nobody finds it in the in-game
+   * browser either -- everyone types this in by hand, which is exactly why
+   * /info ip exists.
+   *
+   * The fallback below stays the raw IP on purpose, even though compose
+   * supplies the hostname. It is the value that still works on the day DNS
+   * is the thing that is broken, and that is precisely the day someone will
+   * be asking the bot where the server is.
    */
   serverAddress: optional("PZ_SERVER_ADDRESS", "217.216.111.122"),
   serverPort: optional("PZ_SERVER_PORT", "16261"),
