@@ -452,9 +452,12 @@ services:
 
 networks:
   mc:
-  pz-ops:
-    external: true
     name: tapestopnight-mc
+  pz-ops:
+    # Shared with the Zomboid compose project so the bot can reach RCON.
+    # External so neither project owns it and `docker compose down` on either
+    # cannot take it from the other:  docker network create pz-ops
+    external: true
 
 volumes:
   db-data:
