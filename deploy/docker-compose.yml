@@ -391,47 +391,43 @@ services:
       # bot treats it as required and refuses to start.
       DISCORD_ADMIN_ROLE_ID: ${DISCORD_ADMIN_ROLE_ID:-}
 
-      # /players list is the one command that reaches the Game Server, over
-      # RCON, because Server List Ping returns only a shuffled sample of names.
-      RCON_HOST: mc
-      RCON_PORT: "25575"
-      RCON_PASSWORD: ${RCON_PASSWORD:?RCON_PASSWORD must be set in deploy/.env}
+      # RCON is now the ONLY channel to the game. Project Zomboid has no Server
+      # List Ping, so there is no cheap probe for a poller to run and no status
+      # cache to read -- /server status and /players list both come through
+      # here. The host is the PZ container's name on the shared `pz-ops`
+      # network below; RCON's 127.0.0.1:27015 publish on the Host is not
+      # reachable from inside a container.
+      RCON_HOST: tapestopnight-pz
+      RCON_PORT: "27015"
+      RCON_PASSWORD: ${PZ_RCON_PASSWORD:?PZ_RCON_PASSWORD must be set in deploy/.env}
 
       DOCKER_PROXY_URL: http://socket-proxy:2375
-      MC_CONTAINER_NAME: tapestopnight-mc
-      MC_SLP_HOST: mc
-      MC_SLP_PORT: "25565"
+      PZ_CONTAINER_NAME: tapestopnight-pz
 
-      PACK_DIR: /pack
+      # What /info ip hands out. A bare address and port, typed in by hand: PZ
+      # speaks UDP so it cannot sit behind Caddy or the Cloudflare proxy, and
+      # the server is unlisted, so it never appears in the in-game browser.
+      PZ_SERVER_ADDRESS: ${PZ_SERVER_ADDRESS:-217.216.111.122}
+      PZ_SERVER_PORT: "16261"
+
+      # Matches stop_grace_period: 3m in the Zomboid compose file. Docker
+      # SIGKILLs whatever is still alive when this elapses, and a SIGKILL
+      # arriving mid-save is how a world is lost -- never set it lower than the
+      # grace period it mirrors.
+      PZ_STOP_TIMEOUT_SECONDS: "180"
+
       PUBLIC_BASE_URL: ${AUTH_URL:-https://tapestopnight.com}
       RESTART_COUNTDOWN_SECONDS: "30"
       TZ: Asia/Bangkok
 
-      # ── The Chat Bridge ───────────────────────────────────────────
-      # Both paths are inside the pack mount below, so the bridge adds no
-      # access this container did not already have. The world directory is
-      # Homestead and not `world` because that is what level-name says.
+      # No Chat Bridge, and no /pack mount.
       #
-      # Reading the log FILE rather than `docker logs` is deliberate: the
-      # container's stdout carries ANSI escapes from the pack's own colouring
-      # (measured: `> [K[10:13:35] ...`), and the file on disk is clean.
-      MC_LOG_PATH: /pack/logs/latest.log
-      MC_WORLD_DIR: /pack/Homestead
-      BRIDGE_POLL_MS: "2000"
-      # Each scan asks the Game Server to flush the world first, because Better
-      # Questing writes progress on save rather than on completion. Slow on
-      # purpose — this is not a hot path and the flush is not free.
-      MILESTONE_SCAN_MS: "60000"
-
-    volumes:
-      # ⚠ The same known privilege the web container carries, for the same
-      # reason: /config apply renders server.properties and server-icon.png
-      # where the Game Server reads them, and an atomic write needs rename(),
-      # which needs the containing directory. Read-write therefore also means
-      # this container could write into mods/. Weighed against the fact that
-      # an admin can already change config and restart the server, this widens
-      # an existing capability rather than creating a new class of one.
-      - /srv/mc/pack:/pack
+      # The bridge tailed the Minecraft server log and relayed chat both
+      # ways. Project Zomboid ships its own Discord bridge -- DiscordEnable,
+      # DiscordToken and DiscordChatChannel in the server INI -- so the
+      # custom one was deleted rather than ported, and with it went the
+      # read-write bind mount of the pack directory and the privileged
+      # MessageContent gateway intent.
 
     depends_on:
       db:
@@ -445,9 +441,19 @@ services:
     mem_limit: 192m
     networks:
       - mc
+      # Two separate compose projects, so two separate networks: the
+      # Zomboid server is `tapestopnight-pz`, this is `tapestopnight-mc`,
+      # and without a shared one the bot cannot resolve the PZ container
+      # at all. Declared external so neither project owns it and
+      # `docker compose down` on either cannot take it from the other.
+      #
+      # Create it once, by hand:  docker network create pz-ops
+      - pz-ops
 
 networks:
   mc:
+  pz-ops:
+    external: true
     name: tapestopnight-mc
 
 volumes:

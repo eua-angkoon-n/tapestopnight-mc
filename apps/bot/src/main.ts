@@ -1,15 +1,20 @@
 /**
- * The Discord bot — Phase 6.
+ * The Discord bot.
  *
  * Every command passes two gates before it does anything: the channel must be
- * on the allowlist (requirement 3.3) and, for anything that changes the world
- * or kicks players, the caller must be an admin by ADR-0004. Both are checked
- * HERE, on invocation, not by whether Discord chose to render the command.
+ * on the allowlist (requirement 3.3) and, for anything that kicks players, the
+ * caller must be an admin by ADR-0004. Both are checked HERE, on invocation,
+ * not by whether Discord chose to render the command.
  *
  * Authorisation is `authorizeAdmin` from core — the same function the web app
  * calls. That is the entire point of ADR-0006: two implementations of "who is
  * an admin" would drift, and the bug that produces is "the web says I am an
  * admin but the bot disagrees".
+ *
+ * Re-scoped from the Minecraft server to Project Zomboid on 2026-10-15. The
+ * database is still here and still load-bearing — `guard.ts` reads the channel
+ * allowlist and the admin grant from it — but nothing writes a status cache any
+ * more, because PZ has no Server List Ping for a poller to probe with.
  */
 import {
   Client,
@@ -25,20 +30,8 @@ import { createDb } from "@tapestopnight/core/db";
 import { ADMIN_ONLY, registerCommands } from "./commands.ts";
 import { env } from "./env.ts";
 import { ADMIN_REFUSAL, adminGrantFor, channelAllowed, channelRefusalMessage } from "./guard.ts";
-import {
-  autocompleteConfigKey,
-  handleConfigApply,
-  handleConfigGet,
-  handleConfigSet,
-} from "./handlers/config.ts";
-import {
-  handleInfoDownload,
-  handleInfoIcon,
-  handleInfoIp,
-  handleInfoModpack,
-} from "./handlers/info.ts";
+import { handleInfoIp, handleInfoSetup } from "./handlers/info.ts";
 import { handlePlayersList } from "./handlers/players.ts";
-import { startBridge } from "./bridge/run.ts";
 import { handleRestart, handleStart, handleStatus, handleStop } from "./handlers/server.ts";
 
 const { db, sql } = createDb();
@@ -48,36 +41,27 @@ function log(...parts: unknown[]) {
 }
 
 /**
- * Guilds for the command tree, and GuildMessages + MessageContent for the Chat
- * Bridge.
+ * Guilds only.
  *
- * The command tree needs neither of the last two — an interaction already
- * carries the caller's roles. The bridge does: relaying what someone typed in a
- * Discord channel into the game is not possible without being allowed to read
- * what they typed, and MessageContent is a PRIVILEGED intent that has to be
- * switched on in the Discord Developer Portal before the gateway will accept
- * this connection at all.
+ * GuildMessages and MessageContent used to be here for the Chat Bridge, which
+ * read what people typed in Discord and relayed it into the game. Project
+ * Zomboid ships its own Discord bridge (`DiscordEnable` and friends in the
+ * server INI), so that code is gone and these intents went with it.
  *
- * ⚠ ADR-0008: this application is shared with DISCO NIGHT and its token is
- * still the one that was meant to be rotated. Turning on MessageContent widens
- * what that application can read across every channel it is in, so rotate the
- * token first rather than after.
+ * Worth keeping gone: MessageContent is a PRIVILEGED intent, and this
+ * application is shared (ADR-0008), so holding it widened what the application
+ * could read across every channel it is in. An interaction already carries the
+ * caller's roles, which is all the command tree ever needed.
  */
-const client = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent,
-  ],
-});
+const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 
 async function route(
   interaction: ChatInputCommandInteraction,
-  route: string,
+  key: string,
 ): Promise<void> {
-  switch (route) {
+  switch (key) {
     case "server status":
-      return handleStatus(interaction, db);
+      return handleStatus(interaction);
     case "server start":
       return handleStart(interaction);
     case "server stop":
@@ -86,26 +70,15 @@ async function route(
       return handleRestart(interaction);
 
     case "players list":
-      return handlePlayersList(interaction, db);
+      return handlePlayersList(interaction);
 
-    case "info modpack":
-      return handleInfoModpack(interaction, db);
+    case "info setup":
+      return handleInfoSetup(interaction);
     case "info ip":
-      return handleInfoIp(interaction, db);
-    case "info download":
-      return handleInfoDownload(interaction, db);
-    case "info icon":
-      return handleInfoIcon(interaction, db);
-
-    case "config get":
-      return handleConfigGet(interaction, db);
-    case "config set":
-      return handleConfigSet(interaction, db);
-    case "config apply":
-      return handleConfigApply(interaction, db);
+      return handleInfoIp(interaction);
 
     default:
-      await interaction.editReply(`ไม่รู้จักคำสั่ง \`${route}\``);
+      await interaction.editReply(`ไม่รู้จักคำสั่ง \`${key}\``);
   }
 }
 
@@ -148,12 +121,13 @@ async function onCommand(interaction: ChatInputCommandInteraction): Promise<void
   }
 
   /*
-    Deferred before any work. A restart countdown runs for 30 seconds and an
-    A stop can take minutes; Discord kills an interaction that is not
-    acknowledged within 3 seconds, and a deferred one lives for 15 minutes.
+    Deferred before any work. A restart countdown runs for 30 seconds and a stop
+    waits out the container's 3-minute grace period; Discord kills an
+    interaction that is not acknowledged within 3 seconds, and a deferred one
+    lives for 15 minutes.
 
-    Admin output is ephemeral: config values and failure detail are for the
-    operator, not for the channel.
+    Admin output is ephemeral: failure detail is for the operator, not for the
+    channel.
   */
   const ephemeral = ADMIN_ONLY.has(key);
   await interaction.deferReply(ephemeral ? { flags: MessageFlags.Ephemeral } : {});
@@ -171,31 +145,12 @@ async function onCommand(interaction: ChatInputCommandInteraction): Promise<void
 }
 
 client.on(Events.InteractionCreate, async (interaction: Interaction) => {
-  if (interaction.isAutocomplete()) {
-    // Autocomplete leaks nothing an allowed member cannot already read with
-    // /config get, and Discord gives it a 3 second budget with no defer, so it
-    // deliberately does not re-run the channel check.
-    try {
-      const focused = interaction.options.getFocused();
-      await interaction.respond(await autocompleteConfigKey(db, focused));
-    } catch (err) {
-      log("autocomplete failed:", err instanceof Error ? err.message : err);
-    }
-    return;
-  }
-
   if (!interaction.isChatInputCommand()) return;
   await onCommand(interaction);
 });
 
-let stopBridge: (() => void) | null = null;
-
 client.once(Events.ClientReady, (ready) => {
   log(`connected as ${ready.user.tag}`);
-  // Started here rather than before login: the bridge posts to Discord, and a
-  // channel fetch before the gateway is ready fails in a way that looks like a
-  // misconfigured channel id rather than a race.
-  stopBridge = startBridge(client, db);
 });
 
 /*
@@ -220,23 +175,15 @@ await client.login(env.token);
 /*
   Do not die because the Game Server restarted.
 
-  Observed in production: an Apply restarts the Game Server, an in-flight RCON
-  call is cut off, and minecraft-server-util's TCPClient rejects a promise from
-  its socket close handler that nobody is awaiting any more — the call site had
-  already caught the first rejection. Node makes an unhandled rejection fatal by
-  default, so the whole bot exited:
+  A restart cuts off any in-flight RCON call, and an async rejection that
+  arrives after its call site has already handled the first error has nobody
+  left to await it. Node makes an unhandled rejection fatal by default, so one
+  of those would take the whole bot down — and a Game Server restart is a
+  NORMAL event here, since `/server restart` performs one.
 
-    Error: Socket closed unexpectedly while waiting for data
-      at closeHandler (minecraft-server-util/dist/structure/TCPClient.js:418)
-
-  `restart: unless-stopped` brought it back in seconds, which hid how much that
-  costs: the tailer starts at the END of the log, on purpose, so everything said
-  in the gap is gone. A Game Server restart is a NORMAL event here — Apply
-  performs one — and losing chat every time one happens is not acceptable.
-
-  Logged loudly rather than swallowed. This exists for third-party async
-  fallout, not to make our own bugs quiet, and the log line is how anyone would
-  ever find out it fired.
+  Logged loudly rather than swallowed. This exists for async fallout that has
+  already been reported to the user, not to make our own bugs quiet, and the log
+  line is how anyone would ever find out it fired.
 */
 process.on("unhandledRejection", (reason) => {
   log("!! unhandled rejection (staying up):", reason instanceof Error ? reason.stack : reason);
@@ -245,7 +192,6 @@ process.on("unhandledRejection", (reason) => {
 for (const signal of ["SIGTERM", "SIGINT"] as const) {
   process.on(signal, () => {
     log(`${signal} — shutting down`);
-    stopBridge?.();
     void client.destroy().then(() => sql.end());
   });
 }
