@@ -51,9 +51,9 @@ export const TIERS: Readonly<Record<string, TierRule>> = {
   "level-type": {
     tier: "LOCKED",
     reason:
-      "Homestead วางภูมิประเทศผ่าน Tectonic และ TerraBlender บนพื้นฐานของ " +
-      "minecraft:normal เปลี่ยนเป็น flat หรือ large_biomes แล้วไบโอมและ " +
-      "โครงสร้างของ pack จะไม่ตรงกับโลกที่ผู้เล่นอยู่",
+      "ATM10 To the Sky เป็นโลกลอยฟ้า สร้างโดย skyblockbuilder:skyblock " +
+      "เปลี่ยนเป็นค่าอื่นแล้ว chunk ใหม่จะกลายเป็นภูมิประเทศปกติ เกาะของผู้เล่น " +
+      "และเควสต์ของ pack จะไม่ตรงกับโลกอีกต่อไป",
   },
   "max-tick-time": {
     tier: "LOCKED",
@@ -110,8 +110,8 @@ export const TIERS: Readonly<Record<string, TierRule>> = {
   difficulty: {
     tier: "GUARDED",
     reason:
-      "Homestead เป็น pack แนวอยู่สบาย ไม่ได้ปรับสมดุลรอบความยากสูงแบบ pack สาย " +
-      "เอาชีวิตรอด เปลี่ยนได้ตามใจกลุ่มผู้เล่น แต่กระทบทุกคนบนเซิร์ฟพร้อมกัน",
+      "ATM10 To the Sky เป็น pack สายเทคและ automation ไม่ได้ปรับสมดุลรอบความยากสูง " +
+      "เปลี่ยนได้ตามใจกลุ่มผู้เล่น แต่กระทบทุกคนบนเซิร์ฟพร้อมกัน",
   },
   pvp: {
     tier: "GUARDED",

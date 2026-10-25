@@ -10,8 +10,15 @@ That first boot is not a formality. It is when the world is generated.
 
 Originally this set only the RCON keys, because a Phase 1 server with no
 database had nothing else it needed. A pack change is a different situation:
-Homestead ships `max-tick-time=120000` and `level-name=world`, and both are
+Homestead shipped `max-tick-time=120000` and `level-name=world`, and both are
 wrong here in ways that cost more than a restart.
+
+ATM10 To the Sky ships NO server.properties at all. Its startserver.sh writes
+four keys into a fresh one instead (PACK_DEFAULTS below) and lets the server
+fill in the rest on first boot. fetch-modpack.sh deletes that launcher, so when
+the file is missing this script writes those four keys itself — otherwise the
+world would generate as ordinary terrain instead of a skyblock, and
+`level-type` cannot be changed after the first boot.
 
 Keep the list below in step with `db/seed/deployment-overrides.ts`, which is
 the reviewed source for the same decisions. They are stated twice on purpose —
@@ -50,11 +57,29 @@ want = {
     # afterwards generates a second world and orphans the first, throwing away
     # the whole first generation pass. It also has to agree with MC_WORLD_DIR
     # in docker-compose.yml and LEVEL_NAME in backup.sh.
-    "level-name": os.environ.get("LEVEL_NAME", "Homestead"),
+    "level-name": os.environ.get("LEVEL_NAME", "atm10sky"),
 }
 
-with open(path) as fh:
-    lines = fh.read().splitlines()
+# What ATM10 To the Sky's own startserver.sh writes when server.properties is
+# absent, copied verbatim (2.2.0). Used ONLY when the file does not exist yet;
+# `want` above is applied on top, so its max-tick-time wins over the pack's
+# 180000.
+#
+# level-type is the one that cannot be fixed later: skyblockbuilder only
+# shapes a world it generates itself.
+PACK_DEFAULTS = [
+    "allow-flight=true",
+    "motd=All the Mods 10 To the Sky",
+    "max-tick-time=180000",
+    "level-type=skyblockbuilder\\:skyblock",
+]
+
+if os.path.exists(path):
+    with open(path) as fh:
+        lines = fh.read().splitlines()
+else:
+    print("no {} - starting from the pack's launcher defaults".format(path))
+    lines = list(PACK_DEFAULTS)
 
 out, seen = [], set()
 for line in lines:

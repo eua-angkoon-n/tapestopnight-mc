@@ -34,6 +34,7 @@ optionsshaders.txt
 
 # ── World and runtime state ─────────────────────────────────────────
 Homestead/
+atm10sky/
 world*/
 logs/
 crash-reports/
