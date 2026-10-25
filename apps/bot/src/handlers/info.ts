@@ -1,84 +1,123 @@
-import { EmbedBuilder, type ChatInputCommandInteraction } from "discord.js";
+import { AttachmentBuilder, EmbedBuilder, type ChatInputCommandInteraction } from "discord.js";
+import { eq } from "drizzle-orm";
 
 import { ACCENT } from "@tapestopnight/core/brand";
+import { serverInfo, type Database } from "@tapestopnight/core/db";
 
 import { env } from "../env.ts";
 
 /**
- * /info — what a player needs before they can join, where they already are.
+ * /info — requirement 2.3's content, delivered where the players already are.
  *
- * Deliberately NOT read from the database. The Minecraft version pulled the
- * modpack name, version and loader out of `server_info` so the website and the
- * bot could not disagree — but every one of those columns describes a modpack,
- * and this server has no modpack: the Workshop list lives in
- * `docker-compose.yml` on the Host and the entrypoint writes it into the INI on
- * every start. A second copy in Postgres would be a second thing to forget to
- * update, which is the exact failure the original was avoiding.
+ * Everything comes from the `server_info` row, the same source the website
+ * reads. Hardcoding the modpack version here would create a second place to
+ * update it, and the one that gets forgotten is the one people quote at each
+ * other when someone cannot join.
  */
 
-/**
- * The two things Steam will NOT do for a player.
- *
- * Every other mod on this server is a Workshop subscription the game fetches on
- * join. pz3d is not: it needs the ZombieBuddy Java agent, which is installed by
- * hand from GitHub, and `DoLuaChecksum=true` means a player whose mod set does
- * not match the server's is refused rather than quietly desynced. So the most
- * common reason someone cannot join is answered here, before they ask — the
- * same job /info modpack did for the Minecraft server.
- */
-export async function handleInfoSetup(
+async function loadInfo(db: Database) {
+  const rows = await db.select().from(serverInfo).where(eq(serverInfo.id, 1)).limit(1);
+  return rows[0] ?? null;
+}
+
+export async function handleInfoModpack(
   interaction: ChatInputCommandInteraction,
+  db: Database,
 ): Promise<void> {
+  const info = await loadInfo(db);
+  if (!info) {
+    await interaction.editReply("ยังไม่มีข้อมูลเซิร์ฟเวอร์ในฐานข้อมูล");
+    return;
+  }
+
   const embed = new EmbedBuilder()
     .setColor(ACCENT)
-    .setTitle("สิ่งที่ต้องลงก่อนเข้าเซิร์ฟ")
-    .setDescription(
-      "ม็อดเกือบทั้งหมดโหลดเองตอนเข้าเกม **ยกเว้น 2 ตัวนี้ที่ต้องลงมือเอง**",
-    )
+    .setTitle(info.modpackName)
     .addFields(
-      {
-        name: "1 · ZombieBuddy",
-        value:
-          "โหลดจาก GitHub releases ของ `zed-0xff/ZombieBuddy` (เวอร์ชัน **2.3.4 ขึ้นไป**)\n" +
-          "Windows ใช้ตัว installer ได้เลย · Linux/macOS ทำตามคู่มือใน repo",
-      },
-      {
-        name: "2 · pz3d",
-        value:
-          "Subscribe ที่ Workshop แล้วเปิดใน Mods — ต้องเป็น **รุ่นเดียวกับเซิร์ฟเวอร์**\n" +
-          "คู่มือเต็ม: https://pz3d.dev",
-      },
-      {
-        name: "ทำไมต้องตรงเป๊ะ",
-        value:
-          "เซิร์ฟเปิด `DoLuaChecksum` ไว้ ถ้าชุดม็อดไม่ตรงกับเซิร์ฟเวอร์จะ **เข้าไม่ได้** " +
-          "ซึ่งเป็นสาเหตุที่พบบ่อยที่สุดของการเข้าเซิร์ฟไม่ได้",
-      },
-      {
-        name: "เครื่องต้องแรงแค่ไหน",
-        value: "pz3d แนะนำให้กัน RAM ให้เกมอย่างน้อย **6 GB** และยังเป็นรุ่นพัฒนา บั๊กมีได้ปกติ",
-      },
-    );
+      { name: "เวอร์ชัน modpack", value: `\`${info.modpackVersion}\``, inline: true },
+      { name: "Minecraft", value: `\`${info.minecraftVersion}\``, inline: true },
+      { name: info.loaderName, value: `\`${info.loaderVersion}\``, inline: true },
+    )
+    .setFooter({
+      // The single most common reason someone cannot join, said before they ask.
+      text: "เวอร์ชันไม่ตรงกับเซิร์ฟเวอร์คือสาเหตุที่พบบ่อยที่สุดของการเข้าไม่ได้",
+    });
 
   await interaction.editReply({ embeds: [embed] });
 }
 
-/**
- * Where the server is.
- *
- * An IP and a port typed in by hand, with no domain and no SRV record to hide
- * the port behind. PZ speaks UDP, so it cannot sit behind Caddy or the
- * Cloudflare proxy, and the server is unlisted so it never appears in the
- * in-game browser — which makes this command the only way most people will
- * find it.
- */
 export async function handleInfoIp(
   interaction: ChatInputCommandInteraction,
+  db: Database,
 ): Promise<void> {
+  const info = await loadInfo(db);
+  const address = info?.serverAddress ?? env.publicBaseUrl.replace(/^https?:\/\//, "");
   await interaction.editReply(
-    `**ที่อยู่เซิร์ฟเวอร์**\n\`\`\`\n${env.serverAddress}\n\`\`\`\n` +
-      `**พอร์ต** \`${env.serverPort}\`\n\n` +
-      "ใส่เองใน **Join → Add Server** — เซิร์ฟไม่ได้ลงรายการสาธารณะ จึงหาในเกมไม่เจอ\n" +
-      "รหัสเข้าเซิร์ฟถามแอดมินได้",
+    `**ที่อยู่เซิร์ฟเวอร์**\n\`\`\`\n${address}\n\`\`\`\n` +
+      "ใส่ตรง ๆ ใน Multiplayer → Add Server **ไม่ต้องใส่พอร์ต** " +
+      "(SRV record ชี้ให้เอง)",
   );
+}
+
+export async function handleInfoDownload(
+  interaction: ChatInputCommandInteraction,
+  db: Database,
+): Promise<void> {
+  const info = await loadInfo(db);
+  if (!info?.downloadUrl) {
+    await interaction.editReply(
+      "ยังไม่ได้ตั้งลิงก์ดาวน์โหลด — แอดมินตั้งได้ในหน้าเว็บ",
+    );
+    return;
+  }
+  await interaction.editReply(
+    `**ดาวน์โหลด ${info.modpackName} ${info.modpackVersion}**\n${info.downloadUrl}`,
+  );
+}
+
+/**
+ * The icon players actually see, attached from the database.
+ *
+ * Attached rather than linked to the website: this answers "is the icon set
+ * correctly" even when the web app is down, and it shows the exact 64x64
+ * derivative Minecraft is served rather than the high-resolution original,
+ * which is the artifact whose correctness anyone would be checking.
+ */
+export async function handleInfoIcon(
+  interaction: ChatInputCommandInteraction,
+  db: Database,
+): Promise<void> {
+  const rows = await db
+    .select({
+      icon64: serverInfo.icon64,
+      sha: serverInfo.iconSourceSha256,
+      updatedAt: serverInfo.iconUpdatedAt,
+    })
+    .from(serverInfo)
+    .where(eq(serverInfo.id, 1))
+    .limit(1);
+
+  const row = rows[0];
+  if (!row?.icon64) {
+    await interaction.editReply(
+      "ยังไม่ได้ตั้งไอคอนเซิร์ฟเวอร์ — แอดมินอัปโหลดได้ในหน้าเว็บ แล้วกด Apply",
+    );
+    return;
+  }
+
+  const file = new AttachmentBuilder(Buffer.from(row.icon64), { name: "server-icon.png" });
+  const embed = new EmbedBuilder()
+    .setColor(ACCENT)
+    .setTitle("ไอคอนเซิร์ฟเวอร์")
+    .setDescription(
+      `ขนาด 64×64 ตามที่ Minecraft ต้องการ (${row.icon64.byteLength.toLocaleString()} ไบต์)\n` +
+        `ต้นฉบับความละเอียดสูงอยู่ที่ ${env.publicBaseUrl}/api/icon`,
+    )
+    .setThumbnail("attachment://server-icon.png");
+
+  if (row.updatedAt) {
+    embed.setFooter({ text: `อัปเดตเมื่อ ${row.updatedAt.toISOString().slice(0, 16).replace("T", " ")}` });
+  }
+
+  await interaction.editReply({ embeds: [embed], files: [file] });
 }

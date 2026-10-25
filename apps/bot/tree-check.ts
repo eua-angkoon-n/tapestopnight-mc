@@ -20,15 +20,16 @@ import { ADMIN_ONLY, buildCommands } from "./src/commands.ts";
 /**
  * Subcommands anyone in an allowed channel may run.
  *
- * Every one of these exposes only what somebody who can already connect would
- * see anyway: who is on, where the server is, and what a player has to install
- * before they can join.
+ * Every one of these exposes only what a Server List Ping already tells the
+ * whole internet, or what the public website shows.
  */
 const PUBLIC: ReadonlySet<string> = new Set([
   "server status",
   "players list",
-  "info setup",
+  "info modpack",
   "info ip",
+  "info download",
+  "info icon",
 ]);
 
 /** Words that would indicate a command reaching past the container. */
