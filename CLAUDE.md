@@ -96,15 +96,18 @@ the file is generated output. Your edit survives until the next Apply, then
 vanishes. Wanting to edit it is the reliable sign you are working the wrong stage
 of the pipeline. See ADR-0002.
 
-**4. `-Xmx8G`, the Aikar flags and the GC logging are load-bearing, and 8G is
-NOT YET MEASURED on this pack.** The Host has 12 GB and shares it; `mem_limit`
-is 10g and is deliberately not being raised to make the heap fit. Measure RSS
-once the server is up and idle — above ~9.6 GiB, drop to 7G rather than waiting
-for the OOM killer to choose the JVM with players connected. The Aikar flags
-are the mitigation, not decoration. The GC flags are the `-Xlog` spelling
-because the Java 8 ones were REMOVED in JDK 16 and a JVM given them refuses to
-boot. Present numbers if you think any of this should change — changing it
-needs a new ADR. See ADR-0018.
+**4. `-Xmx8G`, the Aikar flags and the GC logging are load-bearing. 8G is
+MEASURED and stays, by the operator's decision of 2026-09-14.** RSS is
+9.24 GiB idle and peaked at 9.51 GiB of the 10 GiB `mem_limit` during a
+three-dimension pregeneration, with zero full GCs — it passes its gate with
+almost no headroom, so the number is not scary but it is a CEILING: do not
+raise `max-players` without watching TPS and RSS together, and `mem_limit`
+is deliberately not raised to make the heap fit. The Aikar flags are the
+mitigation, not decoration (`AlwaysPreTouch` is also why RSS reads high —
+the heap is claimed at boot, so RSS barely responds to load). The GC flags
+are the `-Xlog` spelling because the Java 8 ones were REMOVED in JDK 16 and
+a JVM given them refuses to boot. Present numbers if you think any of this
+should change — changing it needs a new ADR. See ADR-0018.
 
 ## `/srv/mc/repo` is not ground truth
 
@@ -143,9 +146,9 @@ Mechanical, so that no two agents have to negotiate.
 - **"Lag."** If `vmstat 1 5` shows swap-in > 0 or steal > 5%, `host-ops` answers
   first, unconditionally — a JVM diagnosis taken under memory pressure produces a
   confident, wrong story about mod ticks. Clean memory, one core pegged, low TPS
-  means a tick stall, which is `mc-server-ops`. Until the 8G heap has been
-  measured on Homestead, treat any swap-in on this Host as the heap question
-  first and the mod question second.
+  means a tick stall, which is `mc-server-ops`. The 8G heap is measured at the
+  top of its band (ADR-0018), so any swap-in on this Host stays the heap
+  question first and the mod question second.
 - **"It's down."** Every "down" that arrives via Discord is a *poller claim*, not
   an observation. Not actionable until corroborated three ways: a direct SLP probe
   from the Host, `docker inspect` uptime, and a `latest.log` timestamp delta.

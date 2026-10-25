@@ -134,13 +134,33 @@ That is a decision for the operator rather than a conclusion of this ADR: 8G was
 chosen deliberately and the gate it was given did not trip. Recorded so that the
 option is visible the first time somebody sees swap on this Host.
 
+### The operator's answer, 2026-09-14: keep 8G
+
+Decided after the full-world pregeneration — all three dimensions, ~220,000 chunks
+generated in one afternoon, which is a heavier sustained load than any player
+session this server will see. Through the whole of it:
+
+| | |
+|---|---|
+| Full GCs | **0** |
+| Heap before / after young collection | ~5.7 GB → ~2.5 GB of 8,192 MB |
+| RSS peak | **9.505 GiB** of the 10 GiB `mem_limit` |
+| Container restarts | 0 |
+
+So the standing state is: 8G by choice, measured under worst load, cgroup never
+breached, and ~0.5 GiB of headroom at peak. The drop to 7G (or the pack's own 5G)
+stays available as the first move the day swap-in appears on this Host — that
+trade was offered and declined while memory was quiet, which is the right time
+to decline it and the wrong time to forget it existed.
+
 The threshold is deliberately a back-out rather than an alarm, in the same shape ADR-0017 used
 for the voice chat jar. An OOM kill on this Host does not degrade the Game Server, it selects
 it: `oom_score_adj: -500` biases the kernel away, but the JVM is still the largest process by a
 wide margin, and every connected player is dropped at once.
 
-Measured on 2026-09-14 — see below. `-Xmx8G` is no longer provisional, but it is at the top of
-its band, so any swap-in on this Host remains the heap question first.
+Measured on 2026-09-14, and the operator chose the same day to keep 8G — see below.
+`-Xmx8G` is no longer provisional, but it is at the top of its band, so any swap-in
+on this Host remains the heap question first.
 
 ## What carries forward unchanged
 

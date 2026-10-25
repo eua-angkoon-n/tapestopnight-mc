@@ -15,12 +15,13 @@ though it were written for a different game, that is why, and it is a bug worth 
 1. **Never hand-edit `server.properties` on the Host.** Postgres is the source of truth; the
    file is generated output. Your edit survives until the next Apply, then vanishes.
    → [ADR-0002](./docs/adr/0002-postgres-source-of-truth.md)
-2. **`-Xmx8G` is deliberate, near the Host's limit, and NOT YET MEASURED on this pack.**
-   The Host has 12 GB and shares it with another system. Measure RSS once the server is idle;
-   above ~9.6 GiB drop to 7G rather than raising `mem_limit`. The Aikar flags and GC logging
-   are the mitigation, not decoration — and the GC flags had to change spelling entirely,
-   because the Java 8 ones were *removed* in JDK 16 and a JVM given them refuses to boot.
-   → [ADR-0018](./docs/adr/0018-heap-on-fabric-java17.md)
+2. **`-Xmx8G` is deliberate, measured, and a ceiling.** RSS is 9.24 GiB idle, 9.51 GiB peak
+   under pregeneration, of a 10 GiB `mem_limit` on a shared 12 GB Host — it passes with almost
+   no headroom, and the operator chose on 2026-09-14 to keep it. Do not raise `max-players`
+   without watching TPS and RSS together, and never raise `mem_limit` to make the heap fit.
+   The Aikar flags and GC logging are the mitigation, not decoration — and the GC flags had to
+   change spelling entirely, because the Java 8 ones were *removed* in JDK 16 and a JVM given
+   them refuses to boot. → [ADR-0018](./docs/adr/0018-heap-on-fabric-java17.md)
 3. **A server that looks hung for five minutes is normal.** `max-tick-time=-1` is mandatory
    because generating chunks for a 374-mod pack takes minutes, and first boot exceeds the
    image's start period outright. Never add a healthcheck, never conclude "down" from an RCON
