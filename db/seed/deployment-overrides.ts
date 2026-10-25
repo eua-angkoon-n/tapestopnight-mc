@@ -56,13 +56,13 @@ export const DEPLOYMENT_OVERRIDES: Readonly<Record<string, Override>> = {
     The pack ships `level-name=world`.
 
     Naming the world after the pack is what makes `/srv/mc/pack` legible: the
-    previous pack's world was `DregoraRL`, and one glance said which pack the
+    previous packs' worlds were `DregoraRL` and `Homestead`, and one glance said which pack the
     directory on disk belonged to. It also has to agree with MC_WORLD_DIR in
     docker-compose.yml and LEVEL_NAME in backup.sh, which is why it is pinned
     here rather than left to whatever the next pack happens to default to.
   */
   "level-name": {
-    value: "Homestead",
+    value: "atm10sky",
     why: "the world directory should name the pack; must match MC_WORLD_DIR and backup.sh",
   },
 };

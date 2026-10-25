@@ -22,10 +22,11 @@ future reader does not have to guess — especially where the code looks wrong o
 | [0015](./0015-chat-bridge-via-log-tail.md) | The Chat Bridge tails the log and writes over RCON; ~~milestones come from Better Questing~~ — that half **superseded by 0020** |
 | [0016](./0016-ip-account-linking.md) | Accounts link by IP address, with a typed code as the path many players will actually use |
 | [0017](./0017-extra-mods-outside-the-pinned-pack.md) | Mods may be added outside the pinned pack, pinned separately — the list is empty since Homestead bundles Simple Voice Chat |
-| [0018](./0018-heap-on-fabric-java17.md) | Run at `-Xmx8G` on Java 17, with a measurement gate instead of a measurement |
+| [0018](./0018-heap-on-fabric-java17.md) | ~~Run at `-Xmx8G` on Java 17, with a measurement gate instead of a measurement~~ — **superseded by 0022** |
 | [0019](./0019-cozy-design-system.md) | Cozy light tokens, Thai-first typography, structural Edit Tiers |
 | [0020](./0020-milestones-from-advancements.md) | Milestones come from the world's advancement files, not Better Questing |
 | [0021](./0021-branch-protection-without-github-pro.md) | `main` protected by a checked-in ruleset plus a local hook, because a private repo on a free plan cannot be protected |
+| [0022](./0022-heap-on-neoforge-java21.md) | Start ATM10 To the Sky at `-Xmx7G` on Java 21, and measure before raising it |
 
 Three of these (0006, 0008, 0018) record a choice made **against** a recommendation. They say so, and
 they state the case for the option that was chosen — not the one that was rejected.
@@ -36,9 +37,11 @@ runtime this server no longer uses. Deleting either would hide that, and the nex
 deserves to see a wrong premise corrected, and a right answer expiring, rather than a history
 where every call was right.
 
-**0018 is the one to watch.** It is the only ADR here that records a decision taken *without*
-the measurement it needed, and it carries a table that is not filled in yet. Until somebody
-writes a measured RSS into it, `-Xmx8G` is provisional.
+**0018 got its measurement, and then its decision.** It began as the only ADR here that
+recorded a decision taken *without* the measurement it needed. The table is filled in now —
+9.24 GiB idle, 9.505 GiB peak under a three-dimension pregeneration, zero full GCs — and on
+2026-09-14 the operator chose to keep 8G with that in front of them. What remains open in it
+is deliberate: the drop to 7G or 5G is written down as the first move if swap ever appears.
 
 Measured facts about the Host live in [`docs/host-inventory.md`](../host-inventory.md), not in
 an ADR — they are observations, not decisions.

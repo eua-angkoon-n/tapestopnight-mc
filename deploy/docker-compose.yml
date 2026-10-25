@@ -7,13 +7,10 @@ name: tapestopnight-mc
 
 services:
   mc:
-    # java17, not java8. Homestead's own variables.txt says
-    # RECOMMENDED_JAVA_VERSION=17, and that is the number that wins here.
-    # 21 almost certainly works and was the first choice; "almost certainly" is
-    # how a 307-mod pack produces a mixin crash that names a mod rather than
-    # the JRE, and nobody debugging at 23:00 starts by suspecting the JDK.
-    # → ADR-0005, ADR-0018
-    image: itzg/minecraft-server:java17
+    # java21: ATM10 To the Sky is Minecraft 1.21.1 on NeoForge, and its own
+    # startserver.sh refuses anything older ("Minecraft 1.21 requires Java 21").
+    # → ADR-0005, ADR-0022
+    image: itzg/minecraft-server:java21
     container_name: tapestopnight-mc
     restart: unless-stopped
     stdin_open: true
@@ -24,29 +21,21 @@ services:
       # published to the Host — see the design notes.
       - "25565:25565"
 
-      # ── ADR-0017: Simple Voice Chat ─────────────────────────────
-      # UDP, and a DIFFERENT port from the game on purpose: the mod's own
-      # config warns that sharing 25565 collides with the server query and
-      # "may crash the server". The /udp suffix is not optional — without it
-      # Docker publishes TCP, the mod binds UDP, and voice fails with the port
-      # looking open to every tool that checks it.
-      #
-      # Also needs `ufw allow 24454/udp` on the Host; the compose publish and
-      # the firewall are two separate doors and both have to be open.
-      - "24454:24454/udp"
+      # No 24454/udp: ATM10 To the Sky does not ship Simple Voice Chat, so
+      # nothing would listen on it. The ufw rule is left in place, harmless.
 
     volumes:
       # The pack materialised by deploy/fetch-modpack.sh from the pinned
-      # SHA256. The Fabric server launcher installs itself in here on first
-      # boot, the same way the Forge installer used to.
+      # SHA256. itzg runs the NeoForge installer in here on first boot; the
+      # pack's own startserver.sh is deleted by fetch-modpack.sh.
       - /srv/mc/pack:/data
 
     environment:
       EULA: "TRUE"
-      TYPE: FABRIC
-      VERSION: "1.20.1"
+      TYPE: NEOFORGE
+      VERSION: "1.21.1"
       # Matches LOADER_VERSION in deploy/modpack.lock, which came from the
-      # pack's own variables.txt (MODLOADER_VERSION=0.18.4). Left unset, the
+      # pack's own startserver.sh (NEOFORGE_VERSION=21.1.250). Left unset, the
       # image installs the newest loader — which usually works, and "usually"
       # is how a box stops being reproducible.
       #
@@ -54,7 +43,7 @@ services:
       # which is also a literal. That file holds secrets, and a loader version
       # is not one; putting it there would have made a version bump a reason to
       # open the one file on this Host that nothing is allowed to read.
-      FABRIC_LOADER_VERSION: "0.18.4"
+      NEOFORGE_VERSION: "21.1.250"
       TZ: Asia/Bangkok
 
       # ── ADR-0002 / ADR-0005 ───────────────────────────────────────
@@ -64,19 +53,18 @@ services:
       SKIP_SERVER_PROPERTIES: "true"
 
       # ── heap ──────────────────────────────────────────────────────
-      # 8G, chosen by the operator, and NOT YET MEASURED on this pack.
+      # 7G for the first boot of ATM10 To the Sky, and NOT YET MEASURED.
       #
-      # ADR-0012 settled on 7G, and it settled it by measuring Forge 1.12.2 on
-      # Java 8 — a runtime this service no longer uses. Java 17's G1 has a
-      # parallel full GC (JDK 10), and Fabric with Lithium and C2ME holds far
-      # less per chunk than Forge did, so the old figure is a poor predictor in
-      # both directions and neither 7G nor 8G can be justified from it.
+      # ADR-0018's 8G was measured on Homestead — ~300 Fabric mods on Java 17,
+      # with about 1.2 GiB of RSS beside the heap. This pack is 322 NeoForge
+      # mods, and NeoForge packs of this size commonly carry 2-3 GiB of
+      # metaspace, code cache and native allocations on top of the heap. 8G
+      # plus that lands at or over the 10g mem_limit, which would get the JVM
+      # OOM-killed on first boot before anything could be measured.
       #
-      # Homestead's own docs ask for 8-12 GB. This Host has 12 GB in total and
-      # shares it, so 8G is the top of what is available rather than a
-      # comfortable middle. Measure RSS once it is up and idle; above ~9.6 GiB
-      # (96% of mem_limit) drop back to 7G rather than waiting for the OOM
-      # killer to pick the JVM with players connected.
+      # So ADR-0018's own gate (RSS above ~9.6 GiB → drop to 7G) is applied up
+      # front. Measure memory.events and /proc/<pid>/status once it is idle;
+      # raise to 8G only if there is headroom. ADR-0022 records the result.
       #
       # USE_AIKAR_FLAGS stays on and is still the mitigation, not decoration:
       # under 12g it selects Aikar's standard branch, which sets
@@ -84,7 +72,7 @@ services:
       # G1 reclaims incrementally instead of falling back to a full GC) and
       # -XX:+AlwaysPreTouch (the heap stays resident, so it is never the thing
       # that swaps). Do not remove either.
-      MEMORY: "8G"
+      MEMORY: "7G"
       USE_AIKAR_FLAGS: "true"
 
       # Measure the pauses instead of arguing about them.
@@ -124,11 +112,10 @@ services:
     # The image ships one by default (mc-health, 30s interval, 120s start
     # period, 2 retries). It stays off.
     #
-    # The original reason was OpenTerrainGenerator, which Homestead does not
-    # have — but the conclusion outlives the reason. First boot of a 374-mod
-    # pack exceeds the 120s start period outright, and Homestead builds terrain
-    # through Tectonic and TerraBlender, which still stalls long enough to fail
-    # a 30s probe under load. What a healthcheck buys is an automatic restart;
+    # The original reason was OpenTerrainGenerator, which no current pack has —
+    # but the conclusion outlives the reason. First boot of a 322-mod NeoForge
+    # pack (NeoForge install, then mod construction, then KubeJS recipe
+    # reload) exceeds the 120s start period outright. What a healthcheck buys is an automatic restart;
     # what it costs is that restart arriving mid chunk-write. That trade was
     # bad on Dregora and it is bad here.
     healthcheck:
@@ -140,8 +127,8 @@ services:
 
     # ── ADR-0010 ────────────────────────────────────────────────────
     # mem_limit bounds the JVM without strangling it, and is deliberately NOT
-    # raised alongside MEMORY: leaving it at 10g is what makes the 8G decision
-    # measurable. An 8G heap needing more than 10g of RSS is one this Host
+    # raised alongside MEMORY: leaving it at 10g is what makes the heap decision
+    # measurable. A heap needing more than 10g of RSS is one this Host
     # cannot afford, and the cgroup is where that shows up as a number instead
     # of as the whole box quietly swapping.
     #
@@ -391,43 +378,47 @@ services:
       # bot treats it as required and refuses to start.
       DISCORD_ADMIN_ROLE_ID: ${DISCORD_ADMIN_ROLE_ID:-}
 
-      # RCON is now the ONLY channel to the game. Project Zomboid has no Server
-      # List Ping, so there is no cheap probe for a poller to run and no status
-      # cache to read -- /server status and /players list both come through
-      # here. The host is the PZ container's name on the shared `pz-ops`
-      # network below; RCON's 127.0.0.1:27015 publish on the Host is not
-      # reachable from inside a container.
-      RCON_HOST: tapestopnight-pz
-      RCON_PORT: "27015"
-      RCON_PASSWORD: ${PZ_RCON_PASSWORD:?PZ_RCON_PASSWORD must be set in deploy/.env}
+      # /players list is the one command that reaches the Game Server, over
+      # RCON, because Server List Ping returns only a shuffled sample of names.
+      RCON_HOST: mc
+      RCON_PORT: "25575"
+      RCON_PASSWORD: ${RCON_PASSWORD:?RCON_PASSWORD must be set in deploy/.env}
 
       DOCKER_PROXY_URL: http://socket-proxy:2375
-      PZ_CONTAINER_NAME: tapestopnight-pz
+      MC_CONTAINER_NAME: tapestopnight-mc
+      MC_SLP_HOST: mc
+      MC_SLP_PORT: "25565"
 
-      # What /info ip hands out. A bare address and port, typed in by hand: PZ
-      # speaks UDP so it cannot sit behind Caddy or the Cloudflare proxy, and
-      # the server is unlisted, so it never appears in the in-game browser.
-      PZ_SERVER_ADDRESS: ${PZ_SERVER_ADDRESS:-217.216.111.122}
-      PZ_SERVER_PORT: "16261"
-
-      # Matches stop_grace_period: 3m in the Zomboid compose file. Docker
-      # SIGKILLs whatever is still alive when this elapses, and a SIGKILL
-      # arriving mid-save is how a world is lost -- never set it lower than the
-      # grace period it mirrors.
-      PZ_STOP_TIMEOUT_SECONDS: "180"
-
+      PACK_DIR: /pack
       PUBLIC_BASE_URL: ${AUTH_URL:-https://tapestopnight.com}
       RESTART_COUNTDOWN_SECONDS: "30"
       TZ: Asia/Bangkok
 
-      # No Chat Bridge, and no /pack mount.
+      # ── The Chat Bridge ───────────────────────────────────────────
+      # Both paths are inside the pack mount below, so the bridge adds no
+      # access this container did not already have. The world directory is
+      # atm10sky and not `world` because that is what level-name says.
       #
-      # The bridge tailed the Minecraft server log and relayed chat both
-      # ways. Project Zomboid ships its own Discord bridge -- DiscordEnable,
-      # DiscordToken and DiscordChatChannel in the server INI -- so the
-      # custom one was deleted rather than ported, and with it went the
-      # read-write bind mount of the pack directory and the privileged
-      # MessageContent gateway intent.
+      # Reading the log FILE rather than `docker logs` is deliberate: the
+      # container's stdout carries ANSI escapes from the pack's own colouring
+      # (measured: `> [K[10:13:35] ...`), and the file on disk is clean.
+      MC_LOG_PATH: /pack/logs/latest.log
+      MC_WORLD_DIR: /pack/atm10sky
+      BRIDGE_POLL_MS: "2000"
+      # Each scan asks the Game Server to flush the world first, because Better
+      # Questing writes progress on save rather than on completion. Slow on
+      # purpose — this is not a hot path and the flush is not free.
+      MILESTONE_SCAN_MS: "60000"
+
+    volumes:
+      # ⚠ The same known privilege the web container carries, for the same
+      # reason: /config apply renders server.properties and server-icon.png
+      # where the Game Server reads them, and an atomic write needs rename(),
+      # which needs the containing directory. Read-write therefore also means
+      # this container could write into mods/. Weighed against the fact that
+      # an admin can already change config and restart the server, this widens
+      # an existing capability rather than creating a new class of one.
+      - /srv/mc/pack:/pack
 
     depends_on:
       db:
@@ -441,23 +432,10 @@ services:
     mem_limit: 192m
     networks:
       - mc
-      # Two separate compose projects, so two separate networks: the
-      # Zomboid server is `tapestopnight-pz`, this is `tapestopnight-mc`,
-      # and without a shared one the bot cannot resolve the PZ container
-      # at all. Declared external so neither project owns it and
-      # `docker compose down` on either cannot take it from the other.
-      #
-      # Create it once, by hand:  docker network create pz-ops
-      - pz-ops
 
 networks:
   mc:
     name: tapestopnight-mc
-  pz-ops:
-    # Shared with the Zomboid compose project so the bot can reach RCON.
-    # External so neither project owns it and `docker compose down` on either
-    # cannot take it from the other:  docker network create pz-ops
-    external: true
 
 volumes:
   db-data:

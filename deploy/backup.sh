@@ -23,7 +23,7 @@ set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BACKUP_ROOT="${BACKUP_ROOT:-/srv/mc/backups}"
 PACK_DIR="${PACK_DIR:-/srv/mc/pack}"
-LEVEL_NAME="${LEVEL_NAME:-Homestead}"
+LEVEL_NAME="${LEVEL_NAME:-atm10sky}"
 MC_CONTAINER="${MC_CONTAINER:-tapestopnight-mc}"
 DB_CONTAINER="${DB_CONTAINER:-tapestopnight-db}"
 
@@ -88,35 +88,17 @@ backup_world() {
       return 0
     fi
 
-    # ── Do not do this in the middle of a pre-generation ────────────
+    # ── No pre-generation guard on this pack ────────────────────────
     #
-    # save-off during pregen does not pause the generator; it only stops the
-    # chunks it produces from reaching disk, so they queue in the heap
-    # instead. Pregen already runs the JVM near its cgroup limit (ADR-0018),
-    # and the OOM killer picks the largest process, which is the game server.
-    # Trading a night's backup for an OOM kill mid-generation is the wrong way
-    # round — especially as the pre-pregen world is already archived and
-    # pregenerated terrain can simply be regenerated.
-    #
-    # The command is Chunky's. It used to be `pregen info ShowTaskList`, which
-    # is Chunk Pregenerator's — a Forge 1.12.2 mod that left with Dregora. The
-    # guard did not fail loudly when the pack changed; it simply stopped
-    # matching anything, which is the shape of bug that leaves a safety check
-    # worthless while still looking present in the file.
-    #
-    # The pattern is matched against real output, captured from a running
-    # pregeneration rather than taken from documentation:
-    #
-    #   [Chunky] Task running for minecraft:overworld. Processed: 59 chunks
-    #   (0.02%), ETA: 6:00:35, Rate: 18.2 cps, Current: 3, 7
-    if docker exec "${MC_CONTAINER}" rcon-cli "chunky progress" 2>/dev/null \
-         | grep -qiE "Task running"; then
-      log "SKIPPING the world backup: a pre-generation is running."
-      log "  save-off would queue generated chunks in the heap next to a JVM"
-      log "  already near its limit. The Postgres backup still ran."
-      log "  Run 'deploy/backup.sh world' once pregen finishes."
-      return 0
-    fi
+    # There used to be one here: save-off during a Chunky pregen queues the
+    # generated chunks in the heap instead of on disk, next to a JVM already
+    # near its cgroup limit. ATM10 To the Sky ships no pregenerator (a void
+    # world has nothing worth pregenerating), so `chunky progress` would
+    # answer "unknown command" forever and the guard would look present while
+    # matching nothing — the exact shape of bug that left the Dregora version
+    # of this check worthless. Removed rather than left to rot. If a
+    # pregenerator is ever added to the pack, the guard comes back with it,
+    # matched against that mod's real output.
 
     log "pausing saves and flushing"
     trap saves_on EXIT

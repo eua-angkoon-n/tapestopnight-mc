@@ -1,89 +1,63 @@
 # Modpack pin (ADR-0009).
 #
-# The payload is NOT in git: git cannot delta-compress jars, and Homestead
-# ships 307 of them. The zip lives in off-box storage; this file is how we
+# The payload is NOT in git: git cannot delta-compress jars, and ATM10 To the
+# Sky ships 322 of them. The zip lives in off-box storage; this file is how we
 # prove the bytes are the right ones.
 #
 # Mod version drift is the most common cause of "my client can't join".
 # fetch-modpack.sh MUST verify SHA256 before unpacking.
 
-MODPACK_NAME="Homestead"
-MODPACK_VERSION="1.3.7"
-MODPACK_FILE="Homestead1.3.7_server_pack.zip"
-MODPACK_SIZE_BYTES=537016567
-MODPACK_SHA256="38e90816b5eb6bd5a3b66096ad60d08bd9c8d69c00b4d27c6bc38f4233fd9e81"
+MODPACK_NAME="ATM10 To the Sky"
+MODPACK_VERSION="2.2.0"
+MODPACK_FILE="ATM10SKY-2.2.0-server.zip"
+MODPACK_SIZE_BYTES=527023907
+MODPACK_SHA256="9b6ae83dc3e39dee975736e2eabebf2914101f66a723501425a169553ae37041"
 
 # Where fetch-modpack.sh downloads from.
 #
-# DELIBERATELY EMPTY — same decision as the Dregora pin, and now also forced.
-# Homestead's server pack is not distributed through CurseForge; the wiki links
-# a Google Drive file, and Drive serves an interstitial HTML page to curl for
-# files this size rather than the file. A URL here would fetch a few kilobytes
-# of markup and fail the hash check in a confusing way.
-#
-# The zip is kept on the Host at /srv/mc/dist/ and on the maintainer's own
-# machine. The cost, stated so nobody is surprised by it: a clean-box rebuild
-# needs someone to bring the zip along. The SHA256 above still does its real
-# job — proving the bytes are the right ones — but it cannot fetch them.
-MODPACK_URL=""
+# Unlike Homestead, ATM publishes its server pack on CurseForge as an
+# "Additional File" of the client release (file 9262010, beside main file
+# 9261952), and the CDN serves it to curl without an API key. So the pin is
+# reproducible again: a clean box needs only this file. The SHA256 above is
+# what makes trusting a CDN acceptable.
+MODPACK_URL="https://mediafilez.forgecdn.net/files/9262/10/ATM10SKY-2.2.0-server.zip"
 
-# The archive wraps everything in ONE top-level directory, `Homestead1.3.7/`.
-# Dregora's did not, and fetch-modpack.sh unpacked straight into the pack
-# directory on that assumption — which here would have produced
-# /srv/mc/pack/Homestead1.3.7/mods and a server with no mods at all.
-# fetch-modpack.sh strips exactly this prefix. Re-check it on a pack upgrade:
-# ServerPackCreator names the directory after the version.
-MODPACK_ZIP_PREFIX="Homestead1.3.7"
+# EMPTY on purpose: this archive puts mods/, config/, kubejs/ … at its root,
+# with no wrapper directory. Homestead's did wrap (Homestead1.3.7/), so
+# re-check on every upgrade with: unzip -Z1 "$MODPACK_FILE" | head
+MODPACK_ZIP_PREFIX=""
 
 # Where players get the pack, and where they read about it. Seeded into
 # server_info by db/seed/seed.ts so the website, the bot and this pin cannot
 # disagree about which pack is running.
-MODPACK_PAGE_URL="https://www.curseforge.com/minecraft/modpacks/homestead-cozy"
-MODPACK_WIKI_URL="https://cozystudios.org/homestead/intro/"
+MODPACK_PAGE_URL="https://www.curseforge.com/minecraft/modpacks/all-the-mods-10-sky"
+MODPACK_WIKI_URL="https://allthemods.github.io/alltheguides/"
 
-# Runtime the pack requires. Read out of the pack's own variables.txt, not
-# guessed: MINECRAFT_VERSION=1.20.1, MODLOADER=Fabric, MODLOADER_VERSION=0.18.4,
-# RECOMMENDED_JAVA_VERSION=17.
+# Runtime the pack requires. Read out of the pack's own startserver.sh, not
+# guessed: NEOFORGE_VERSION=21.1.250, and "Minecraft 1.21 requires Java 21".
 #
-# Note what changed from the Dregora pin, because almost everything did: Forge
-# became Fabric, 1.12.2 became 1.20.1 and Java 8 became Java 17. The Java 8 GC
-# flags in docker-compose.yml are not merely deprecated on 17, they are
-# removed — a JVM started with -Xloggc refuses to boot.
-#
-# JAVA_MAJOR is 17 because that is what the pack says it wants. 21 would very
-# probably work and was the first choice here; the pack's own number won,
-# because "probably" is how a 307-mod pack produces a mixin crash that names a
-# mod rather than the JRE.
-MINECRAFT_VERSION="1.20.1"
-LOADER_NAME="Fabric"
-LOADER_VERSION="0.18.4"
-JAVA_MAJOR=17
+# Everything changed from the Homestead pin at once: Fabric became NeoForge,
+# 1.20.1 became 1.21.1 and Java 17 became Java 21.
+MINECRAFT_VERSION="1.21.1"
+LOADER_NAME="NeoForge"
+LOADER_VERSION="21.1.250"
+JAVA_MAJOR=21
 
 # Paths deleted after unpacking (ADR-0009).
 #
-# ── No client mods are listed here, and that is not an oversight ─────────────
+# Only the pack's own launcher. startserver.sh downloads the NeoForge
+# installer and installs a SECOND server into the same directory, then loops
+# restarting it — under itzg, which installs NeoForge itself, anybody who runs
+# it while debugging gets a second Minecraft fighting the first over the world.
+# user_jvm_args.txt is that launcher's heap file; itzg ignores it, and leaving
+# it would suggest it is where the heap is set. It is not: see MEMORY in
+# docker-compose.yml.
 #
-# The Dregora list existed because Forge 1.12.2 loads every jar in mods/ and
-# does not know which are client-side. Fabric does: a mod declares
-# `"environment": "client"` in its fabric.mod.json and the loader skips it
-# entirely on a dedicated server. Verified against this archive — iris-1.7.6
-# declares exactly that.
-#
-# The pack ships a handful of jars that a player thinks of as client-side
-# (Xaero's minimap and world map, JEI, Jade, AppleSkin, screenshot-to-clipboard)
-# and those declare `"environment": "*"`. They are built to load on a server and
-# several of them have real server-side halves — Jade and AppleSkin send data to
-# the client. Deleting them to save disk would be trading a working feature for
-# a few hundred megabytes. They stay.
-#
-# What IS deleted is the pack's own launcher, which is a foot-gun under itzg
-# rather than client payload: start.sh downloads the ServerStarterJar and
-# installs a SECOND server into the same directory. Anybody who runs it while
-# debugging gets a second Minecraft that fights the first over the world.
+# No mods are deleted. NeoForge performs a mod-list handshake on connect, and
+# client-only mods in this pack declare themselves and are skipped by the
+# loader on a dedicated server.
 CLIENT_ONLY_PATHS=(
-  "start.sh"
-  "start.bat"
-  "start.ps1"
-  "install_java.sh"
-  "install_java.ps1"
+  "startserver.sh"
+  "startserver.bat"
+  "user_jvm_args.txt"
 )

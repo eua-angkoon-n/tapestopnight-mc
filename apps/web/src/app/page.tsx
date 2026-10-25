@@ -39,7 +39,7 @@ export default async function HomePage() {
   const address = info?.serverAddress ?? "tapestopnight.com";
   const version = info
     ? `Minecraft ${info.minecraftVersion} · ${info.loaderName} ${info.loaderVersion}`
-    : "Minecraft 1.20.1 · Fabric";
+    : "Minecraft 1.21.1 · NeoForge";
 
   return (
     <main>
@@ -55,7 +55,7 @@ export default async function HomePage() {
         */}
         <div
           className="media-still"
-          style={{ backgroundImage: `url("${mediaUrl("homestead-hero.webp")}")` }}
+          style={{ backgroundImage: `url("${mediaUrl("atm10sky-hero.webp")}")` }}
           aria-hidden="true"
         />
         <div className="scrim" />
@@ -110,7 +110,7 @@ export default async function HomePage() {
             }}
           >
             <p style={{ margin: 0, fontSize: "clamp(1.05rem, 2.4vw, 1.4rem)" }}>
-              {info?.modpackName ?? "Homestead"}
+              {info?.modpackName ?? "ATM10 To the Sky"}
             </p>
             <LiveStatus
               initial={{
@@ -177,13 +177,13 @@ export default async function HomePage() {
                 Wiki
               </h2>
               <p className="muted" style={{ margin: "0.4rem 0 0", maxWidth: "44rem" }}>
-                คู่มือ Homestead โดย Cozy Studios
+                คู่มือ All the Mods โดยทีม ATM
               </p>
             </div>
             {/*
               Always visible, never conditional.
 
-              cozystudios.org is somebody else's site. It serves from GitHub
+              allthemods.github.io is somebody else's site. It serves from GitHub
               Pages today, which sends neither X-Frame-Options nor a CSP
               frame-ancestors, so the embed works — but the day they add either
               this frame becomes a silent blank box, and a cross-origin iframe
@@ -193,7 +193,7 @@ export default async function HomePage() {
             */}
             {info?.wikiUrl ? (
               <a className="btn" href={info.wikiUrl} target="_blank" rel="noopener noreferrer">
-                เปิดใน cozystudios.org ↗
+                เปิดใน allthemods.github.io ↗
               </a>
             ) : null}
           </header>
@@ -202,7 +202,7 @@ export default async function HomePage() {
             <div className="frame-panel">
               <iframe
                 src={info.wikiUrl}
-                title="Homestead Wiki"
+                title="All the Mods Guides"
                 loading="lazy"
                 referrerPolicy="no-referrer-when-downgrade"
                 /* Nearly the whole viewport. dvh, not vh: on mobile the

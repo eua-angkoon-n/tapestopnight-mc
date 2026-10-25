@@ -12,8 +12,19 @@ unpacked.
 Do not edit it. If the pack is upgraded, replace it wholesale from the new zip
 and expect the render check to tell you what changed.
 
-It is Homestead 1.3.7's copy — 50 keys, taken from
-`Homestead1.3.7/server.properties` inside the server pack.
+It is ATM10 To the Sky 2.2.0's — 61 keys — and, unlike every pack before it,
+it is **not** inside the server pack zip, because that pack ships no
+`server.properties` at all. Its `startserver.sh` writes four keys into a fresh
+file (`allow-flight`, `motd`, `max-tick-time=180000`,
+`level-type=skyblockbuilder\:skyblock`) and Minecraft 1.21.1 fills in the rest
+on first boot.
+
+So this file was captured from the Host after the first boot on 2026-10-25,
+with `rcon.password` blanked and the three bootstrap overrides below reverted
+to what the pack alone would have produced (`enable-rcon=false`,
+`max-tick-time=180000`, `level-name=world`). That makes it the pack's file in
+every respect that matters, and keeps `deployment-overrides.ts` the only place
+our values come from.
 
 ## One key is deliberately not round-tripped
 

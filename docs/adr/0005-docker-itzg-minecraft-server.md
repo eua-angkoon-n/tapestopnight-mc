@@ -67,3 +67,20 @@ Do not read the disappearance of OTG as having retired the rule. → CLAUDE.md, 
 
 The heap and GC flags moved too, and needed more than a value change — the Java 8 GC flags were
 *removed* in JDK 16 and would have stopped the container booting at all. → ADR-0018.
+
+## What the move to ATM10 To the Sky changed (2026-10-25)
+
+The choice of `itzg/minecraft-server` survives a second pack change. The values:
+
+| | Homestead | ATM10 To the Sky 2.2.0 |
+|---|---|---|
+| Image tag | `java17` | `java21` |
+| `TYPE` | `FABRIC` | `NEOFORGE` |
+| `VERSION` | `1.20.1` | `1.21.1` |
+| Loader pin | `FABRIC_LOADER_VERSION=0.18.4` | `NEOFORGE_VERSION=21.1.250` |
+| `MEMORY` | 8G | 7G until measured (ADR-0022) |
+| Voice chat port | `24454/udp` | none — the pack has no Simple Voice Chat |
+
+Unchanged and still mandatory: `SKIP_SERVER_PROPERTIES`, the disabled healthcheck,
+`stop_grace_period: 10m`, `max-tick-time=-1`. The pack's own `startserver.sh` is deleted on
+unpack — it would install a second NeoForge into the same directory.

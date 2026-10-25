@@ -22,14 +22,15 @@ project out. `.claude/hooks/guard.ps1` enforces this and will refuse the command
 
 `217.216.111.122` (`vmi3563957.contaboserver.net`) — Contabo VPS, Ubuntu 24.04,
 6 vCPU, 12 GB RAM, 4 GB swap (`vm.swappiness=1`), 193 GB disk. `ufw` allows
-22, 80, 443, 25565/tcp, 24454/udp and nothing else. Caddy fronts everything:
+22, 80, 443, 25565/tcp, 24454/udp (unused since ATM10 To the Sky), 16261-16262/udp
+(the stopped Zomboid server) and nothing else. Caddy fronts everything:
 `tapestopnight.com` to `127.0.0.1:3002`, `ledger.tapestopnight.com` to `127.0.0.1:3001`.
 
 Compose project `tapestopnight-mc`, defined at `/srv/mc/repo/deploy/docker-compose.yml`:
 
 | Container | What it is |
 |---|---|
-| `tapestopnight-mc` | the Game Server — Fabric 1.20.1, Homestead, `MEMORY=8G` |
+| `tapestopnight-mc` | the Game Server — NeoForge 1.21.1, ATM10 To the Sky, `MEMORY=7G` (unmeasured, ADR-0022) |
 | `tapestopnight-db` | Postgres 16 — the Desired Config, source of truth |
 | `tapestopnight-socket-proxy` | scoped Docker access for the Control Plane |
 | `tapestopnight-poller` | the **only** thing that probes the Game Server |
@@ -96,15 +97,21 @@ the file is generated output. Your edit survives until the next Apply, then
 vanishes. Wanting to edit it is the reliable sign you are working the wrong stage
 of the pipeline. See ADR-0002.
 
-**4. `-Xmx8G`, the Aikar flags and the GC logging are load-bearing, and 8G is
-NOT YET MEASURED on this pack.** The Host has 12 GB and shares it; `mem_limit`
-is 10g and is deliberately not being raised to make the heap fit. Measure RSS
-once the server is up and idle — above ~9.6 GiB, drop to 7G rather than waiting
-for the OOM killer to choose the JVM with players connected. The Aikar flags
-are the mitigation, not decoration. The GC flags are the `-Xlog` spelling
-because the Java 8 ones were REMOVED in JDK 16 and a JVM given them refuses to
-boot. Present numbers if you think any of this should change — changing it
-needs a new ADR. See ADR-0018.
+**4. The heap, the Aikar flags and the GC logging are load-bearing.** Since
+2026-10-25 the pack is ATM10 To the Sky on Java 21 and the heap is **7G,
+NOT YET MEASURED** — ADR-0022 holds the gate that decides whether it moves.
+What follows is the Homestead record it replaced, kept because the
+reasoning carries over: for Homestead, 8G was measured. RSS was
+9.24 GiB idle and peaked at 9.51 GiB of the 10 GiB `mem_limit` during a
+three-dimension pregeneration, with zero full GCs — it passes its gate with
+almost no headroom, so the number is not scary but it is a CEILING: do not
+raise `max-players` without watching TPS and RSS together, and `mem_limit`
+is deliberately not raised to make the heap fit. The Aikar flags are the
+mitigation, not decoration (`AlwaysPreTouch` is also why RSS reads high —
+the heap is claimed at boot, so RSS barely responds to load). The GC flags
+are the `-Xlog` spelling because the Java 8 ones were REMOVED in JDK 16 and
+a JVM given them refuses to boot. Present numbers if you think any of this
+should change — changing it needs a new ADR. See ADR-0018.
 
 ## `/srv/mc/repo` is not ground truth
 
@@ -143,9 +150,9 @@ Mechanical, so that no two agents have to negotiate.
 - **"Lag."** If `vmstat 1 5` shows swap-in > 0 or steal > 5%, `host-ops` answers
   first, unconditionally — a JVM diagnosis taken under memory pressure produces a
   confident, wrong story about mod ticks. Clean memory, one core pegged, low TPS
-  means a tick stall, which is `mc-server-ops`. Until the 8G heap has been
-  measured on Homestead, treat any swap-in on this Host as the heap question
-  first and the mod question second.
+  means a tick stall, which is `mc-server-ops`. The 8G heap is measured at the
+  top of its band (ADR-0018), so any swap-in on this Host stays the heap
+  question first and the mod question second.
 - **"It's down."** Every "down" that arrives via Discord is a *poller claim*, not
   an observation. Not actionable until corroborated three ways: a direct SLP probe
   from the Host, `docker inspect` uptime, and a `latest.log` timestamp delta.

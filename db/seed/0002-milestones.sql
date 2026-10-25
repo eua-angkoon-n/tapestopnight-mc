@@ -5,43 +5,36 @@
 -- and policy belongs in review, the same argument that keeps the Edit Tiers in
 -- TypeScript.
 --
--- ── What changed from Dregora ───────────────────────────────────────────────
+-- ── What changed with ATM10 To the Sky (2026-10-25) ────────────────────────
 --
--- Everything. The previous version of this file was 24 rows of Better
--- Questing quest ids and Lycanites, Ice and Fire and SR Parasites entity ids.
--- None of those mods exist in Homestead, and Better Questing's
--- QuestProgress.json does not exist either — so every row in it matched
--- nothing and always would.
+-- The pack before this one was Homestead, a cozy farming pack, and this list
+-- was built around it. ATM10 To the Sky is a skyblock: everyone starts on an
+-- island in the void, and the story is Ex Deorum sieving, then tech —
+-- Mekanism, Applied Energistics 2, Create. The farming line is trimmed, the
+-- "go explore the biomes" line is gone (adventuring_time cannot happen in a
+-- void world worth announcing), and the tech milestones are what people will
+-- actually say out loud.
 --
--- The kinds are now:
+-- Homestead's own namespaces (cozystudioscore, duckling) are deleted below:
+-- those mods are not installed, so those rows can never match. Farmer's
+-- Delight IS in this pack, and its ids were re-checked against the 2.2.0 jar,
+-- so its rows stay.
+--
+-- The kinds:
 --
 --   kind='advancement'  the id in <world>/advancements/<uuid>.json, `done:true`
 --   kind='kill'         the statistics file counted the kill
 --
--- Advancements are available here because Homestead does not switch them off.
--- Dregora did: config/fermiummixins.cfg shipped "Nuke Advancements
--- (Vanilla)"=true, which is why the old file explained at length why it could
--- not use them. → docs/adr/0015-chat-bridge-via-log-tail.md
---
 -- ── Where these ids came from ──────────────────────────────────────────────
 --
--- These are VANILLA 1.20.1 advancement ids, which are stable and exist on any
--- 1.20.1 server whether or not a pack adds to them. They are chosen for a
--- cozy survival server: the farming, taming and building line matters more
--- here than the boss-kill line did on Dregora.
+-- Vanilla 1.21.1 ids come from the game itself and exist on any server. The
+-- pack's own ids were read out of the server pack's jars, not guessed: every
+-- `data/<namespace>/advancement(s)/**.json` across all 322 mod jars, minus the
+-- recipe tree — about 1,900 real advancements across 46 namespaces, of which
+-- only a handful are seeded. The rule applied was "would somebody say this out
+-- loud in chat". To add more later:
 --
--- The pack's own ids were read out of the server pack's jars, not guessed:
--- every `data/<namespace>/advancements/**.json` across all 307 mod jars, minus
--- the recipe tree. That is 10,837 recipe unlocks (which the reader skips) and
--- roughly 700 real advancements across 44 namespaces.
---
--- Only a handful are seeded. The rule applied was "would somebody say this out
--- loud in chat" — which rules out, for instance, all 32 of Comforts' one-per-
--- dye-colour hammock and sleeping-bag advancements. To add more later:
---
---   docker exec tapestopnight-mc \
---     sh -c 'cat /data/Homestead/advancements/*.json' | grep -o '"[a-z_]*:[a-z_/]*"' \
---     | sort -u | grep -v '^"minecraft:recipes'
+--   docker exec tapestopnight-mc --     sh -c 'cat /data/atm10sky/advancements/*.json' | grep -o '"[a-z_]*:[a-z_/]*"' --     | sort -u | grep -v '^"minecraft:recipes'
 --
 -- ⚠ The Thai labels for the pack's own advancements are written from the
 -- advancement ID, because the jars hold ids and there is no server-side
@@ -80,31 +73,60 @@ DELETE FROM notable_milestone
  WHERE kind = 'kill'
    AND key NOT LIKE 'minecraft:%';
 
+-- Homestead's, and the vanilla rows that only made sense on it. Already
+-- announced milestones live in player_milestone and are not touched.
+DELETE FROM notable_milestone
+ WHERE kind = 'advancement'
+   AND (key LIKE 'cozystudioscore:%'
+     OR key LIKE 'duckling:%'
+     OR key IN ('minecraft:story/mine_stone',
+                'minecraft:story/smelt_iron',
+                'minecraft:story/obtain_armor',
+                'minecraft:story/enchant_item',
+                'minecraft:husbandry/plant_seed',
+                'minecraft:husbandry/breed_an_animal',
+                'minecraft:husbandry/breed_all_animals',
+                'minecraft:husbandry/balanced_diet',
+                'minecraft:husbandry/silk_touch_nest',
+                'minecraft:husbandry/netherite_hoe',
+                'minecraft:adventure/trade',
+                'minecraft:nether/find_fortress',
+                'minecraft:nether/obtain_blaze_rod',
+                'minecraft:adventure/adventuring_time',
+                'minecraft:adventure/totem_of_undying',
+                'farmersdelight:main/get_rich_soil',
+                'farmersdelight:main/obtain_netherite_knife'));
+
 INSERT INTO notable_milestone (kind, key, label) VALUES
-  -- ── settling in: the first hours everyone shares ────────────────────────
-  ('advancement', 'minecraft:story/mine_stone',        'ขุดหินก้อนแรกได้แล้ว ⛏️'),
-  ('advancement', 'minecraft:story/smelt_iron',        'ถลุงเหล็กได้ครั้งแรก'),
-  ('advancement', 'minecraft:story/obtain_armor',      'ใส่เกราะชุดแรกแล้ว 🛡️'),
+  -- ── off the island: the first hours everyone shares ─────────────────────
+  -- `exdeorum:core/root` is deliberately absent: a root advancement is
+  -- granted on arrival, so announcing it would congratulate people for joining.
+  ('advancement', 'exdeorum:core/crook',        'ทำไม้เขี่ย (Crook) อันแรกแล้ว 🪝'),
+  ('advancement', 'exdeorum:core/barrel',       'ตั้งถังหมักแรกแล้ว 🛢️'),
+  ('advancement', 'exdeorum:core/string_mesh',  'ได้ตะแกรงร่อนชิ้นแรก — เริ่มร่อนหาแร่ได้แล้ว'),
   ('advancement', 'minecraft:story/mine_diamond',      'เจอเพชรแล้ว 💎'),
-  ('advancement', 'minecraft:story/enchant_item',      'ร่ายมนตร์ของชิ้นแรกได้ ✨'),
+  ('advancement', 'minecraft:husbandry/tame_an_animal', 'มีเพื่อนสัตว์เลี้ยงตัวแรกแล้ว 🐾'),
 
-  -- ── the homestead itself: what this pack is actually about ──────────────
-  ('advancement', 'minecraft:husbandry/plant_seed',        'เริ่มลงเมล็ดพืชแปลงแรกแล้ว 🌱'),
-  ('advancement', 'minecraft:husbandry/tame_an_animal',    'มีเพื่อนสัตว์เลี้ยงตัวแรกแล้ว 🐾'),
-  ('advancement', 'minecraft:husbandry/breed_an_animal',   'เพาะพันธุ์สัตว์สำเร็จครั้งแรก'),
-  ('advancement', 'minecraft:husbandry/breed_all_animals', 'เพาะพันธุ์สัตว์ครบทุกชนิดแล้ว 🐄🐖🐔'),
-  ('advancement', 'minecraft:husbandry/balanced_diet',     'กินครบทุกอย่างที่กินได้ในเกม 🍎'),
-  ('advancement', 'minecraft:husbandry/silk_touch_nest',   'ย้ายรังผึ้งทั้งรังมาไว้ที่บ้าน 🐝'),
-  ('advancement', 'minecraft:husbandry/netherite_hoe',     'อัปจอบเป็นเนเธอไรต์ — เอาจริงเรื่องทำไร่ 🌾'),
-  ('advancement', 'minecraft:adventure/trade',             'ค้าขายกับ villager ครั้งแรก 💰'),
+  -- ── tech: what this pack is actually about ──────────────────────────────
+  ('advancement', 'ae2:main/controller',        'สร้าง ME Controller แล้ว ระบบ AE2 เริ่มเดิน 💾'),
+  ('advancement', 'ae2:main/qnb',               'ทำ Quantum Network Bridge ได้แล้ว'),
+  ('advancement', 'mekanism:steel_ingot',       'ได้เหล็กกล้า (Steel) แท่งแรกจาก Mekanism'),
+  ('advancement', 'mekanism:digital_miner',     'สร้าง Digital Miner แล้ว ⛏️'),
+  ('advancement', 'mekanism:teleporter',        'สร้าง Teleporter ได้แล้ว 🌀'),
+  ('advancement', 'mekanism:mekasuit',          'ใส่ MekaSuit แล้ว 🦾'),
+  ('advancement', 'mekanism:sps',               'เดินเครื่อง SPS ได้แล้ว'),
+  ('advancement', 'mekanism:antimatter',        'ผลิต Antimatter ได้แล้ว ⚛️'),
+  ('advancement', 'create:steam_engine',        'เดินเครื่องจักรไอน้ำของ Create ได้แล้ว 🚂'),
+  ('advancement', 'create:train',               'สร้างรถไฟขบวนแรกแล้ว 🚆'),
 
-  -- ── going further afield ────────────────────────────────────────────────
+  -- ── the kitchen: Farmer's Delight is in this pack too ───────────────────
+  ('advancement', 'farmersdelight:main/place_cooking_pot',    'ตั้งหม้อต้มใบแรกแล้ว 🍲'),
+  ('advancement', 'farmersdelight:main/place_feast',          'จัดสำรับใหญ่เลี้ยงคนทั้งเซิร์ฟ 🍽️'),
+  ('advancement', 'farmersdelight:main/master_chef',          'เป็น Master Chef แล้ว 👨‍🍳'),
+
+  -- ── going further ───────────────────────────────────────────────────────
   ('advancement', 'minecraft:story/enter_the_nether',   'เข้าเนเธอร์ครั้งแรก 🔥'),
-  ('advancement', 'minecraft:nether/find_fortress',     'เจอป้อมเนเธอร์แล้ว'),
-  ('advancement', 'minecraft:nether/obtain_blaze_rod',  'ได้แท่ง Blaze มาแล้ว'),
   ('advancement', 'minecraft:nether/netherite_armor',   'ได้เกราะเนเธอไรต์ครบชุด'),
-  ('advancement', 'minecraft:adventure/adventuring_time', 'เดินทางครบทุกไบโอม 🗺️'),
-  ('advancement', 'minecraft:adventure/totem_of_undying', 'ได้ Totem of Undying มาครอง'),
   ('advancement', 'minecraft:story/enter_the_end',      'เปิดประตูสู่ดิ The End แล้ว'),
 
   -- ── the two fights people still talk about ──────────────────────────────
@@ -112,26 +134,7 @@ INSERT INTO notable_milestone (kind, key, label) VALUES
   ('advancement', 'minecraft:nether/summon_wither',     'เรียก Wither ออกมาแล้ว — ขอให้โชคดี 💀'),
   ('advancement', 'minecraft:end/elytra',               'ได้ Elytra แล้ว บินได้เสียที 🪶'),
   ('kill', 'minecraft:ender_dragon', 'ฆ่า Ender Dragon ได้ 🐉'),
-  ('kill', 'minecraft:wither',       'ฆ่า Wither ได้ 💀'),
-
-  -- ── Homestead's own, from the cozystudioscore namespace ─────────────────
-  -- `cozystudioscore/root` is deliberately absent: a root advancement is
-  -- granted on arrival, so announcing it would congratulate people for joining.
-  ('advancement', 'cozystudioscore:cozystudioscore/kiln',             'สร้างเตาเผา (Kiln) ของตัวเองแล้ว 🏺'),
-  ('advancement', 'cozystudioscore:building_blocks/arborist_table',   'ตั้งโต๊ะ Arborist ได้แล้ว 🪵'),
-  ('advancement', 'cozystudioscore:cozystudioscore/tranquil_lantern', 'ได้ Tranquil Lantern มาแล้ว 🏮'),
-  ('advancement', 'cozystudioscore:misc/tree_whisperer',              'ปลดล็อก Tree Whisperer แล้ว 🌳'),
-
-  -- ── Farmer's Delight: the kitchen, which is most of what this pack is ───
-  ('advancement', 'farmersdelight:main/place_cooking_pot',    'ตั้งหม้อต้มใบแรกแล้ว 🍲'),
-  ('advancement', 'farmersdelight:main/place_feast',          'จัดสำรับใหญ่เลี้ยงคนทั้งเซิร์ฟ 🍽️'),
-  ('advancement', 'farmersdelight:main/get_rich_soil',        'ทำดินดี (Rich Soil) ได้แล้ว 🌾'),
-  ('advancement', 'farmersdelight:main/master_chef',          'เป็น Master Chef แล้ว 👨‍🍳'),
-  ('advancement', 'farmersdelight:main/obtain_netherite_knife', 'ได้มีดเนเธอไรต์มาแล้ว 🔪'),
-
-  -- ── the one everybody will actually post a screenshot of ────────────────
-  ('advancement', 'duckling:pet_duck',   'ได้เป็ดเป็นเพื่อนแล้ว 🦆'),
-  ('advancement', 'duckling:breed_duck', 'เพาะพันธุ์เป็ดสำเร็จ 🐣')
+  ('kill', 'minecraft:wither',       'ฆ่า Wither ได้ 💀')
 ON CONFLICT (kind, key) DO UPDATE SET label = EXCLUDED.label, enabled = TRUE;
 
 COMMIT;

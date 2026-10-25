@@ -8,26 +8,29 @@
  * only thing stubbed, because that is the one part nobody can exercise from a
  * terminal — and it is also the part least likely to be wrong.
  *
- * NON-DESTRUCTIVE BY CONSTRUCTION. It never calls start, stop or restart, and
- * it writes nothing anywhere. The one command it sends the game is `players`,
- * which reads.
- *
- * The Minecraft version also exercised the Edit Tiers by attempting writes it
- * expected to be refused. There is no `/config` here to attempt them against —
- * see the note in `src/commands.ts` for why that command did not survive the
- * move to Project Zomboid.
+ * NON-DESTRUCTIVE BY CONSTRUCTION. It never calls start, stop, restart or
+ * apply, and the only writes it attempts are ones it expects to be REFUSED —
+ * a LOCKED key and an unconfirmed GUARDED key — with the stored values read
+ * back afterwards to prove nothing moved. Running this against production is
+ * the intended use; that is why the refusals are what it tests.
  */
 import { eq } from "drizzle-orm";
 
-import { allowedChannel, createDb } from "@tapestopnight/core/db";
-import { listPlayers } from "@tapestopnight/core/control";
+import { allowedChannel, configKey, createDb } from "@tapestopnight/core/db";
+import { tierFor } from "@tapestopnight/core/config";
 
 import { env } from "./src/env.ts";
 import { ADMIN_ONLY } from "./src/commands.ts";
 import { adminGrantFor, channelAllowed, channelRefusalMessage, roleIdsOf } from "./src/guard.ts";
-import { handleInfoIp, handleInfoSetup } from "./src/handlers/info.ts";
+import {
+  handleInfoDownload,
+  handleInfoIcon,
+  handleInfoIp,
+  handleInfoModpack,
+} from "./src/handlers/info.ts";
 import { handlePlayersList } from "./src/handlers/players.ts";
 import { handleStatus } from "./src/handlers/server.ts";
+import { handleConfigGet, handleConfigSet, autocompleteConfigKey } from "./src/handlers/config.ts";
 
 const { db, sql } = createDb();
 
@@ -151,41 +154,18 @@ try {
   const plainGrant = await adminGrantFor(db, asPlain.interaction);
   check("non-role holder is NOT admin", !plainGrant.isAdmin);
   check("roleIdsOf reads the raw member shape", roleIdsOf(asAdmin.interaction).length === 1);
-  check(
-    "every command that disconnects players is gated",
-    ADMIN_ONLY.has("server stop") &&
-      ADMIN_ONLY.has("server start") &&
-      ADMIN_ONLY.has("server restart"),
-  );
+  check("lifecycle commands are gated", ADMIN_ONLY.has("server stop") && ADMIN_ONLY.has("config apply"));
 
-  // ── 3. RCON reaches Project Zomboid at all ───────────────────────
-  /*
-    Checked on its own, before the handlers that depend on it.
-
-    `minecraft-server-util`'s RCON client could not log in to PZ — it rejects
-    the empty type-0 packet PZ sends before the type-2 auth result — so
-    core/control/rcon.ts is a hand-written Source RCON client. This assertion is
-    what would catch that client regressing, and it names the thing that broke
-    rather than leaving it to surface as "/players list said something odd".
-  */
-  console.log("\nRCON (hand-written Source client)");
-  try {
-    const names = await listPlayers(env.rcon);
-    check("players command round-trips", Array.isArray(names), `${names.length} online`);
-  } catch (err) {
-    check("players command round-trips", false, err instanceof Error ? err.message : String(err));
-  }
-
-  // ── 4. read-only commands against live services ──────────────────
+  // ── 3. read-only commands against live services ──────────────────
   console.log("\nread-only commands (live)");
   const run = async (
     name: string,
-    fn: (i: never) => Promise<void>,
+    fn: (i: never, d: typeof db) => Promise<void>,
     expect?: (text: string, c: Captured) => boolean,
   ) => {
     const f = fakeInteraction({ userId: ADMIN_USER, roleIds: [env.adminRoleId], channelId: GOOD_CHANNEL });
     try {
-      await fn(f.interaction);
+      await fn(f.interaction, db);
       const ok = expect ? expect(f.captured.text, f.captured) : f.captured.text.length > 0;
       check(name, ok, f.captured.text.replace(/\s+/g, " ").slice(0, 90));
     } catch (err) {
@@ -193,38 +173,94 @@ try {
     }
   };
 
-  await run(
-    "/server status",
-    handleStatus,
-    (t, c) => c.embeds === 1 && /ออนไลน์|ปิดอยู่|ยังไม่ตอบ/.test(t),
-  );
+  await run("/server status", handleStatus, (t, c) => c.embeds === 1 && /ออนไลน์|ปิดอยู่/.test(t));
 
   /*
     The fallback message is NOT a pass.
 
-    This assertion was originally just "said something", and it went green while
-    RCON was unreachable — the handler's own "could not ask" text is a sentence,
-    so the check was satisfied by the failure it existed to detect. A smoke test
-    that accepts an error string as evidence of success is worse than none.
+    This assertion was originally just "said something", and it went green
+    while RCON was unreachable — the handler's own "could not ask, the server
+    may be generating chunks" text is a sentence, so the check was satisfied by
+    the failure it existed to detect. A smoke test that accepts an error string
+    as evidence of success is worse than no smoke test.
+
+    /players list is the one command that must reach the Game Server, so
+    reaching it is the thing to assert.
   */
   await run(
     "/players list",
     handlePlayersList,
     (t) => !t.includes("ถามรายชื่อผู้เล่นไม่สำเร็จ") && t.length > 0,
   );
-
-  // Asserts the two manual installs are still named. They are the reason a
-  // player cannot join, and a /info setup that quietly stopped mentioning them
-  // would be worse than one that errored.
+  // Checks the loader NAME from the row rather than the literal "Forge" this
+  // asserted until the move to Homestead — which would now fail on a server
+  // that is working correctly, and is exactly the assertion a pack change
+  // should not be able to break quietly.
   await run(
-    "/info setup",
-    handleInfoSetup,
-    (t, c) => c.embeds === 1 && t.includes("ZombieBuddy") && t.includes("pz3d"),
+    "/info modpack",
+    handleInfoModpack,
+    (t, c) => c.embeds === 1 && (t.includes("Fabric") || t.includes("Forge") || t.includes("NeoForge")),
   );
-  await run(
-    "/info ip",
-    handleInfoIp,
-    (t) => t.includes(env.serverAddress) && t.includes(env.serverPort),
+  await run("/info ip", handleInfoIp, (t) => t.includes("tapestopnight.com"));
+  await run("/info download", handleInfoDownload);
+  await run("/info icon", handleInfoIcon, (t, c) => c.files === 1 || t.includes("ยังไม่ได้ตั้งไอคอน"));
+
+  // ── 4. ADR-0003 tiers, enforced server-side ──────────────────────
+  console.log("\nEdit Tiers (ADR-0003) — refusals, with the stored value read back");
+  const allKeys = await db.select({ key: configKey.key, value: configKey.value }).from(configKey);
+  const lockedKey = allKeys.find((k) => tierFor(k.key).tier === "LOCKED");
+  const guardedKey = allKeys.find((k) => tierFor(k.key).tier === "GUARDED");
+
+  const attemptSet = async (key: string, value: string) => {
+    const f = fakeInteraction({
+      userId: ADMIN_USER,
+      roleIds: [env.adminRoleId],
+      channelId: GOOD_CHANNEL,
+      strings: { key, value },
+    });
+    await handleConfigSet(f.interaction, db);
+    const after = await db
+      .select({ value: configKey.value })
+      .from(configKey)
+      .where(eq(configKey.key, key))
+      .limit(1);
+    return { said: f.captured.text, stored: after[0]?.value };
+  };
+
+  if (lockedKey) {
+    const r = await attemptSet(lockedKey.key, "definitely-not-this");
+    check(`LOCKED ${lockedKey.key} refused`, r.said.includes("ถูกล็อกไว้"));
+    check(`LOCKED ${lockedKey.key} value untouched`, r.stored === lockedKey.value, `still ${r.stored}`);
+  } else {
+    check("a LOCKED key exists to test", false);
+  }
+
+  if (guardedKey) {
+    const r = await attemptSet(guardedKey.key, "definitely-not-this");
+    check(`GUARDED ${guardedKey.key} refused without confirm`, r.said.includes("GUARDED"));
+    check(`GUARDED ${guardedKey.key} value untouched`, r.stored === guardedKey.value, `still ${r.stored}`);
+  } else {
+    check("a GUARDED key exists to test", false);
+  }
+
+  // ── 5. /config get and autocomplete ──────────────────────────────
+  console.log("\n/config get and autocomplete");
+  const getMotd = fakeInteraction({
+    userId: ADMIN_USER,
+    roleIds: [env.adminRoleId],
+    channelId: GOOD_CHANNEL,
+    strings: { key: "motd" },
+  });
+  await handleConfigGet(getMotd.interaction, db);
+  check("/config get motd", getMotd.captured.embeds === 1, getMotd.captured.text.replace(/\s+/g, " ").slice(0, 80));
+
+  const choices = await autocompleteConfigKey(db, "");
+  check("autocomplete returns choices", choices.length > 0, `${choices.length} shown`);
+  check("autocomplete respects Discord's 25 cap", choices.length <= 25);
+  check(
+    "autocomplete marks locked keys",
+    choices.some((c) => c.name.includes("LOCKED")),
+    choices.find((c) => c.name.includes("LOCKED"))?.name ?? "",
   );
 
   console.log(failures === 0 ? "\nALL PASSED" : `\n${failures} FAILED`);

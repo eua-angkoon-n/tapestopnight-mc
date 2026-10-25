@@ -20,7 +20,7 @@
 --
 -- Deliberately NOT part of this file. It destroys every admin edit, which is
 -- right exactly once per pack and wrong every other time this file is run.
--- Values come from the modpack's own server.properties (50 keys),
+-- Values come from the modpack's own server.properties (61 keys),
 -- so the seeded config is exactly what the pack author shipped and tested.
 -- The pack's identity comes from deploy/modpack.lock, so this file and the
 -- verified archive cannot disagree about which pack is running.
@@ -28,6 +28,10 @@
 -- which is policy in source: a tier change should arrive through review.
 
 BEGIN;
+
+INSERT INTO config_key (key, value, tier, reason, updated_by) VALUES
+  ('accepts-transfers', 'false', 'LOCKED', 'คีย์นี้ยังไม่ได้จัดระดับไว้ ระบบจึงล็อกไว้โดยปริยายเพื่อความปลอดภัย ถ้าต้องการให้แก้ได้ ต้องเพิ่มลง TIERS ในโค้ดผ่านการรีวิว', 'seed')
+ON CONFLICT (key) DO UPDATE SET tier = EXCLUDED.tier, reason = EXCLUDED.reason;
 
 INSERT INTO config_key (key, value, tier, reason, updated_by) VALUES
   ('allow-flight', 'true', 'LOCKED', 'ต้องเป็น true ไม่งั้นผู้เล่นที่ใช้ elytra ขี่สัตว์บิน หรือของจาก mod ที่ ทำให้ลอยตัว จะถูกเซิร์ฟเตะออกด้วยข้อหาโกง ทั้งที่เล่นตามปกติ', 'seed')
@@ -46,11 +50,15 @@ INSERT INTO config_key (key, value, tier, reason, updated_by) VALUES
 ON CONFLICT (key) DO UPDATE SET tier = EXCLUDED.tier, reason = EXCLUDED.reason;
 
 INSERT INTO config_key (key, value, tier, reason, updated_by) VALUES
-  ('difficulty', 'normal', 'GUARDED', 'Homestead เป็น pack แนวอยู่สบาย ไม่ได้ปรับสมดุลรอบความยากสูงแบบ pack สาย เอาชีวิตรอด เปลี่ยนได้ตามใจกลุ่มผู้เล่น แต่กระทบทุกคนบนเซิร์ฟพร้อมกัน', 'seed')
+  ('bug-report-link', '', 'LOCKED', 'คีย์นี้ยังไม่ได้จัดระดับไว้ ระบบจึงล็อกไว้โดยปริยายเพื่อความปลอดภัย ถ้าต้องการให้แก้ได้ ต้องเพิ่มลง TIERS ในโค้ดผ่านการรีวิว', 'seed')
 ON CONFLICT (key) DO UPDATE SET tier = EXCLUDED.tier, reason = EXCLUDED.reason;
 
 INSERT INTO config_key (key, value, tier, reason, updated_by) VALUES
-  ('enable-command-block', 'true', 'LOCKED', 'ต้องเป็น true เพราะโครงสร้างและรางวัลเควสต์ของ pack ใช้ command block ปิดแล้วบางโครงสร้างจะสร้างไม่ครบและเควสต์บางอันจะให้ของไม่ได้', 'seed')
+  ('difficulty', 'easy', 'GUARDED', 'ATM10 To the Sky เป็น pack สายเทคและ automation ไม่ได้ปรับสมดุลรอบความยากสูง เปลี่ยนได้ตามใจกลุ่มผู้เล่น แต่กระทบทุกคนบนเซิร์ฟพร้อมกัน', 'seed')
+ON CONFLICT (key) DO UPDATE SET tier = EXCLUDED.tier, reason = EXCLUDED.reason;
+
+INSERT INTO config_key (key, value, tier, reason, updated_by) VALUES
+  ('enable-command-block', 'false', 'LOCKED', 'ต้องเป็น true เพราะโครงสร้างและรางวัลเควสต์ของ pack ใช้ command block ปิดแล้วบางโครงสร้างจะสร้างไม่ครบและเควสต์บางอันจะให้ของไม่ได้', 'seed')
 ON CONFLICT (key) DO UPDATE SET tier = EXCLUDED.tier, reason = EXCLUDED.reason;
 
 INSERT INTO config_key (key, value, tier, reason, updated_by) VALUES
@@ -71,7 +79,11 @@ INSERT INTO config_key (key, value, tier, reason, updated_by) VALUES
 ON CONFLICT (key) DO UPDATE SET tier = EXCLUDED.tier, reason = EXCLUDED.reason;
 
 INSERT INTO config_key (key, value, tier, reason, updated_by) VALUES
-  ('enforce-whitelist', 'true', 'GUARDED', 'เปิดแล้วคนที่ถูกถอดออกจาก whitelist จะถูกเตะออกทันทีระหว่างเล่น ไม่ใช่แค่เข้าใหม่ไม่ได้', 'seed')
+  ('enforce-secure-profile', 'true', 'GUARDED', 'บังคับให้ข้อความแชทมีลายเซ็นของ Mojang ปิดแล้วผู้เล่นที่ใช้ mod แชท บางตัวจะเข้าได้ราบรื่นขึ้น แต่เซิร์ฟจะยืนยันไม่ได้ว่าใครพิมพ์อะไรจริง', 'seed')
+ON CONFLICT (key) DO UPDATE SET tier = EXCLUDED.tier, reason = EXCLUDED.reason;
+
+INSERT INTO config_key (key, value, tier, reason, updated_by) VALUES
+  ('enforce-whitelist', 'false', 'GUARDED', 'เปิดแล้วคนที่ถูกถอดออกจาก whitelist จะถูกเตะออกทันทีระหว่างเล่น ไม่ใช่แค่เข้าใหม่ไม่ได้', 'seed')
 ON CONFLICT (key) DO UPDATE SET tier = EXCLUDED.tier, reason = EXCLUDED.reason;
 
 INSERT INTO config_key (key, value, tier, reason, updated_by) VALUES
@@ -95,16 +107,28 @@ INSERT INTO config_key (key, value, tier, reason, updated_by) VALUES
 ON CONFLICT (key) DO UPDATE SET tier = EXCLUDED.tier, reason = EXCLUDED.reason;
 
 INSERT INTO config_key (key, value, tier, reason, updated_by) VALUES
-  ('generator-settings', '', 'LOCKED', 'คีย์นี้ยังไม่ได้จัดระดับไว้ ระบบจึงล็อกไว้โดยปริยายเพื่อความปลอดภัย ถ้าต้องการให้แก้ได้ ต้องเพิ่มลง TIERS ในโค้ดผ่านการรีวิว', 'seed')
+  ('generator-settings', '{}', 'LOCKED', 'คีย์นี้ยังไม่ได้จัดระดับไว้ ระบบจึงล็อกไว้โดยปริยายเพื่อความปลอดภัย ถ้าต้องการให้แก้ได้ ต้องเพิ่มลง TIERS ในโค้ดผ่านการรีวิว', 'seed')
 ON CONFLICT (key) DO UPDATE SET tier = EXCLUDED.tier, reason = EXCLUDED.reason;
 
 INSERT INTO config_key (key, value, tier, reason, updated_by) VALUES
   ('hardcore', 'false', 'GUARDED', 'เปิดแล้วผู้เล่นที่ตายจะถูกแบนถาวรจากโลกนั้น เป็นการเปลี่ยนกติกาที่ ย้อนความเสียหายให้ผู้เล่นไม่ได้', 'seed')
 ON CONFLICT (key) DO UPDATE SET tier = EXCLUDED.tier, reason = EXCLUDED.reason;
 
+INSERT INTO config_key (key, value, tier, reason, updated_by) VALUES
+  ('hide-online-players', 'false', 'FREE', 'ซ่อนรายชื่อผู้เล่นจากหน้ารายการเซิร์ฟ — หน้าเว็บและบอทอ่านจากที่นี่ เปิดแล้วทั้งสองที่จะไม่มีรายชื่อให้แสดง', 'seed')
+ON CONFLICT (key) DO UPDATE SET tier = EXCLUDED.tier, reason = EXCLUDED.reason;
+
+INSERT INTO config_key (key, value, tier, reason, updated_by) VALUES
+  ('initial-disabled-packs', '', 'LOCKED', 'คีย์นี้ยังไม่ได้จัดระดับไว้ ระบบจึงล็อกไว้โดยปริยายเพื่อความปลอดภัย ถ้าต้องการให้แก้ได้ ต้องเพิ่มลง TIERS ในโค้ดผ่านการรีวิว', 'seed')
+ON CONFLICT (key) DO UPDATE SET tier = EXCLUDED.tier, reason = EXCLUDED.reason;
+
+INSERT INTO config_key (key, value, tier, reason, updated_by) VALUES
+  ('initial-enabled-packs', 'vanilla', 'LOCKED', 'คีย์นี้ยังไม่ได้จัดระดับไว้ ระบบจึงล็อกไว้โดยปริยายเพื่อความปลอดภัย ถ้าต้องการให้แก้ได้ ต้องเพิ่มลง TIERS ในโค้ดผ่านการรีวิว', 'seed')
+ON CONFLICT (key) DO UPDATE SET tier = EXCLUDED.tier, reason = EXCLUDED.reason;
+
 -- OVERRIDDEN: pack ships 'world' — the world directory should name the pack; must match MC_WORLD_DIR and backup.sh
 INSERT INTO config_key (key, value, tier, reason, updated_by) VALUES
-  ('level-name', 'Homestead', 'LOCKED', 'เปลี่ยนแล้วเซิร์ฟจะสร้างโลกใหม่ว่างเปล่า โลกเดิมกลายเป็นไฟล์ทิ้ง เสียทั้ง progress ผู้เล่นและเวลาสร้างแผนที่ทั้งหมด กู้ไม่ได้', 'seed')
+  ('level-name', 'atm10sky', 'LOCKED', 'เปลี่ยนแล้วเซิร์ฟจะสร้างโลกใหม่ว่างเปล่า โลกเดิมกลายเป็นไฟล์ทิ้ง เสียทั้ง progress ผู้เล่นและเวลาสร้างแผนที่ทั้งหมด กู้ไม่ได้', 'seed')
 ON CONFLICT (key) DO UPDATE SET tier = EXCLUDED.tier, reason = EXCLUDED.reason;
 
 INSERT INTO config_key (key, value, tier, reason, updated_by) VALUES
@@ -112,18 +136,22 @@ INSERT INTO config_key (key, value, tier, reason, updated_by) VALUES
 ON CONFLICT (key) DO UPDATE SET tier = EXCLUDED.tier, reason = EXCLUDED.reason;
 
 INSERT INTO config_key (key, value, tier, reason, updated_by) VALUES
-  ('level-type', 'default', 'LOCKED', 'Homestead วางภูมิประเทศผ่าน Tectonic และ TerraBlender บนพื้นฐานของ minecraft:normal เปลี่ยนเป็น flat หรือ large_biomes แล้วไบโอมและ โครงสร้างของ pack จะไม่ตรงกับโลกที่ผู้เล่นอยู่', 'seed')
+  ('level-type', 'skyblockbuilder:skyblock', 'LOCKED', 'ATM10 To the Sky เป็นโลกลอยฟ้า สร้างโดย skyblockbuilder:skyblock เปลี่ยนเป็นค่าอื่นแล้ว chunk ใหม่จะกลายเป็นภูมิประเทศปกติ เกาะของผู้เล่น และเควสต์ของ pack จะไม่ตรงกับโลกอีกต่อไป', 'seed')
 ON CONFLICT (key) DO UPDATE SET tier = EXCLUDED.tier, reason = EXCLUDED.reason;
 
 INSERT INTO config_key (key, value, tier, reason, updated_by) VALUES
-  ('max-build-height', '256', 'LOCKED', 'คีย์นี้ยังไม่ได้จัดระดับไว้ ระบบจึงล็อกไว้โดยปริยายเพื่อความปลอดภัย ถ้าต้องการให้แก้ได้ ต้องเพิ่มลง TIERS ในโค้ดผ่านการรีวิว', 'seed')
+  ('log-ips', 'true', 'LOCKED', 'คีย์นี้ยังไม่ได้จัดระดับไว้ ระบบจึงล็อกไว้โดยปริยายเพื่อความปลอดภัย ถ้าต้องการให้แก้ได้ ต้องเพิ่มลง TIERS ในโค้ดผ่านการรีวิว', 'seed')
 ON CONFLICT (key) DO UPDATE SET tier = EXCLUDED.tier, reason = EXCLUDED.reason;
 
 INSERT INTO config_key (key, value, tier, reason, updated_by) VALUES
-  ('max-players', '10', 'FREE', 'จำนวนผู้เล่นพร้อมกันสูงสุด เครื่องนี้รัน heap 8 GB ซึ่งเป็นเพดานของ Host ไม่ใช่ค่าที่เหลือเฟือ ตั้งสูงได้แต่ควรดู TPS และ RSS ประกอบ', 'seed')
+  ('max-chained-neighbor-updates', '1000000', 'LOCKED', 'คีย์นี้ยังไม่ได้จัดระดับไว้ ระบบจึงล็อกไว้โดยปริยายเพื่อความปลอดภัย ถ้าต้องการให้แก้ได้ ต้องเพิ่มลง TIERS ในโค้ดผ่านการรีวิว', 'seed')
 ON CONFLICT (key) DO UPDATE SET tier = EXCLUDED.tier, reason = EXCLUDED.reason;
 
--- OVERRIDDEN: pack ships '120000' — watchdog must not fire during chunk generation (CLAUDE.md prohibition 1, ADR-0005)
+INSERT INTO config_key (key, value, tier, reason, updated_by) VALUES
+  ('max-players', '20', 'FREE', 'จำนวนผู้เล่นพร้อมกันสูงสุด เครื่องนี้รัน heap 8 GB ซึ่งเป็นเพดานของ Host ไม่ใช่ค่าที่เหลือเฟือ ตั้งสูงได้แต่ควรดู TPS และ RSS ประกอบ', 'seed')
+ON CONFLICT (key) DO UPDATE SET tier = EXCLUDED.tier, reason = EXCLUDED.reason;
+
+-- OVERRIDDEN: pack ships '180000' — watchdog must not fire during chunk generation (CLAUDE.md prohibition 1, ADR-0005)
 INSERT INTO config_key (key, value, tier, reason, updated_by) VALUES
   ('max-tick-time', '-1', 'LOCKED', 'ต้องเป็น -1 เพราะการสร้าง chunk ของ pack นี้ใช้เวลานานกว่าค่ามาตรฐาน ถ้าตั้งค่าอื่น watchdog จะเข้าใจผิดว่าเซิร์ฟแครชแล้วฆ่าตัวเองกลางการเขียนโลก', 'seed')
 ON CONFLICT (key) DO UPDATE SET tier = EXCLUDED.tier, reason = EXCLUDED.reason;
@@ -133,7 +161,7 @@ INSERT INTO config_key (key, value, tier, reason, updated_by) VALUES
 ON CONFLICT (key) DO UPDATE SET tier = EXCLUDED.tier, reason = EXCLUDED.reason;
 
 INSERT INTO config_key (key, value, tier, reason, updated_by) VALUES
-  ('motd', 'Homestead Server', 'FREE', 'ข้อความที่แสดงในหน้ารายการเซิร์ฟของผู้เล่น', 'seed')
+  ('motd', 'All the Mods 10 To the Sky', 'FREE', 'ข้อความที่แสดงในหน้ารายการเซิร์ฟของผู้เล่น', 'seed')
 ON CONFLICT (key) DO UPDATE SET tier = EXCLUDED.tier, reason = EXCLUDED.reason;
 
 INSERT INTO config_key (key, value, tier, reason, updated_by) VALUES
@@ -177,7 +205,23 @@ INSERT INTO config_key (key, value, tier, reason, updated_by) VALUES
 ON CONFLICT (key) DO UPDATE SET tier = EXCLUDED.tier, reason = EXCLUDED.reason;
 
 INSERT INTO config_key (key, value, tier, reason, updated_by) VALUES
+  ('region-file-compression', 'deflate', 'LOCKED', 'คีย์นี้ยังไม่ได้จัดระดับไว้ ระบบจึงล็อกไว้โดยปริยายเพื่อความปลอดภัย ถ้าต้องการให้แก้ได้ ต้องเพิ่มลง TIERS ในโค้ดผ่านการรีวิว', 'seed')
+ON CONFLICT (key) DO UPDATE SET tier = EXCLUDED.tier, reason = EXCLUDED.reason;
+
+INSERT INTO config_key (key, value, tier, reason, updated_by) VALUES
+  ('require-resource-pack', 'false', 'LOCKED', 'คีย์นี้ยังไม่ได้จัดระดับไว้ ระบบจึงล็อกไว้โดยปริยายเพื่อความปลอดภัย ถ้าต้องการให้แก้ได้ ต้องเพิ่มลง TIERS ในโค้ดผ่านการรีวิว', 'seed')
+ON CONFLICT (key) DO UPDATE SET tier = EXCLUDED.tier, reason = EXCLUDED.reason;
+
+INSERT INTO config_key (key, value, tier, reason, updated_by) VALUES
   ('resource-pack', '', 'LOCKED', 'คีย์นี้ยังไม่ได้จัดระดับไว้ ระบบจึงล็อกไว้โดยปริยายเพื่อความปลอดภัย ถ้าต้องการให้แก้ได้ ต้องเพิ่มลง TIERS ในโค้ดผ่านการรีวิว', 'seed')
+ON CONFLICT (key) DO UPDATE SET tier = EXCLUDED.tier, reason = EXCLUDED.reason;
+
+INSERT INTO config_key (key, value, tier, reason, updated_by) VALUES
+  ('resource-pack-id', '', 'LOCKED', 'คีย์นี้ยังไม่ได้จัดระดับไว้ ระบบจึงล็อกไว้โดยปริยายเพื่อความปลอดภัย ถ้าต้องการให้แก้ได้ ต้องเพิ่มลง TIERS ในโค้ดผ่านการรีวิว', 'seed')
+ON CONFLICT (key) DO UPDATE SET tier = EXCLUDED.tier, reason = EXCLUDED.reason;
+
+INSERT INTO config_key (key, value, tier, reason, updated_by) VALUES
+  ('resource-pack-prompt', '', 'LOCKED', 'คีย์นี้ยังไม่ได้จัดระดับไว้ ระบบจึงล็อกไว้โดยปริยายเพื่อความปลอดภัย ถ้าต้องการให้แก้ได้ ต้องเพิ่มลง TIERS ในโค้ดผ่านการรีวิว', 'seed')
 ON CONFLICT (key) DO UPDATE SET tier = EXCLUDED.tier, reason = EXCLUDED.reason;
 
 INSERT INTO config_key (key, value, tier, reason, updated_by) VALUES
@@ -193,7 +237,7 @@ INSERT INTO config_key (key, value, tier, reason, updated_by) VALUES
 ON CONFLICT (key) DO UPDATE SET tier = EXCLUDED.tier, reason = EXCLUDED.reason;
 
 INSERT INTO config_key (key, value, tier, reason, updated_by) VALUES
-  ('snooper-enabled', 'false', 'LOCKED', 'คีย์นี้ยังไม่ได้จัดระดับไว้ ระบบจึงล็อกไว้โดยปริยายเพื่อความปลอดภัย ถ้าต้องการให้แก้ได้ ต้องเพิ่มลง TIERS ในโค้ดผ่านการรีวิว', 'seed')
+  ('simulation-distance', '10', 'GUARDED', 'ระยะที่ของในโลกยังทำงานจริง — พืชโต เตาหลอม สัตว์เดิน ลดแล้วประหยัดแรง เครื่องมาก แต่ฟาร์มที่อยู่ไกลผู้เล่นจะหยุดทำงานโดยไม่มีอะไรบอก', 'seed')
 ON CONFLICT (key) DO UPDATE SET tier = EXCLUDED.tier, reason = EXCLUDED.reason;
 
 INSERT INTO config_key (key, value, tier, reason, updated_by) VALUES
@@ -209,7 +253,7 @@ INSERT INTO config_key (key, value, tier, reason, updated_by) VALUES
 ON CONFLICT (key) DO UPDATE SET tier = EXCLUDED.tier, reason = EXCLUDED.reason;
 
 INSERT INTO config_key (key, value, tier, reason, updated_by) VALUES
-  ('spawn-protection', '8', 'GUARDED', 'กำหนดว่าผู้เล่นทั่วไปแก้บล็อกรอบจุดเกิดได้ไกลแค่ไหน', 'seed')
+  ('spawn-protection', '16', 'GUARDED', 'กำหนดว่าผู้เล่นทั่วไปแก้บล็อกรอบจุดเกิดได้ไกลแค่ไหน', 'seed')
 ON CONFLICT (key) DO UPDATE SET tier = EXCLUDED.tier, reason = EXCLUDED.reason;
 
 INSERT INTO config_key (key, value, tier, reason, updated_by) VALUES
@@ -225,7 +269,7 @@ INSERT INTO config_key (key, value, tier, reason, updated_by) VALUES
 ON CONFLICT (key) DO UPDATE SET tier = EXCLUDED.tier, reason = EXCLUDED.reason;
 
 INSERT INTO config_key (key, value, tier, reason, updated_by) VALUES
-  ('view-distance', '12', 'GUARDED', 'ระยะที่เซิร์ฟส่ง chunk ให้ผู้เล่นเห็น เป็นตัวกินแรมและ CPU ที่ใหญ่ที่สุด ตัวหนึ่ง เครื่องนี้มีแรมจำกัด เพิ่มแล้วควรดู TPS และ RSS ประกอบเสมอ', 'seed')
+  ('view-distance', '10', 'GUARDED', 'ระยะที่เซิร์ฟส่ง chunk ให้ผู้เล่นเห็น เป็นตัวกินแรมและ CPU ที่ใหญ่ที่สุด ตัวหนึ่ง เครื่องนี้มีแรมจำกัด เพิ่มแล้วควรดู TPS และ RSS ประกอบเสมอ', 'seed')
 ON CONFLICT (key) DO UPDATE SET tier = EXCLUDED.tier, reason = EXCLUDED.reason;
 
 INSERT INTO config_key (key, value, tier, reason, updated_by) VALUES
@@ -238,7 +282,7 @@ ON CONFLICT (key) DO UPDATE SET tier = EXCLUDED.tier, reason = EXCLUDED.reason;
 -- filtering, so a key left behind by a previous modpack keeps being rendered
 -- onto a server that has never heard of it. Dregora's `hellworld` is the
 -- reason this clause exists: it is not a property of vanilla 1.20.1 at all.
-DELETE FROM config_key WHERE key NOT IN ('allow-flight', 'allow-nether', 'broadcast-console-to-ops', 'broadcast-rcon-to-ops', 'difficulty', 'enable-command-block', 'enable-jmx-monitoring', 'enable-query', 'enable-rcon', 'enable-status', 'enforce-whitelist', 'entity-broadcast-range-percentage', 'force-gamemode', 'function-permission-level', 'gamemode', 'generate-structures', 'generator-settings', 'hardcore', 'level-name', 'level-seed', 'level-type', 'max-build-height', 'max-players', 'max-tick-time', 'max-world-size', 'motd', 'network-compression-threshold', 'online-mode', 'op-permission-level', 'player-idle-timeout', 'prevent-proxy-connections', 'pvp', 'query.port', 'rate-limit', 'rcon.password', 'rcon.port', 'resource-pack', 'resource-pack-sha1', 'server-ip', 'server-port', 'snooper-enabled', 'spawn-animals', 'spawn-monsters', 'spawn-npcs', 'spawn-protection', 'sync-chunk-writes', 'text-filtering-config', 'use-native-transport', 'view-distance', 'white-list');
+DELETE FROM config_key WHERE key NOT IN ('accepts-transfers', 'allow-flight', 'allow-nether', 'broadcast-console-to-ops', 'broadcast-rcon-to-ops', 'bug-report-link', 'difficulty', 'enable-command-block', 'enable-jmx-monitoring', 'enable-query', 'enable-rcon', 'enable-status', 'enforce-secure-profile', 'enforce-whitelist', 'entity-broadcast-range-percentage', 'force-gamemode', 'function-permission-level', 'gamemode', 'generate-structures', 'generator-settings', 'hardcore', 'hide-online-players', 'initial-disabled-packs', 'initial-enabled-packs', 'level-name', 'level-seed', 'level-type', 'log-ips', 'max-chained-neighbor-updates', 'max-players', 'max-tick-time', 'max-world-size', 'motd', 'network-compression-threshold', 'online-mode', 'op-permission-level', 'player-idle-timeout', 'prevent-proxy-connections', 'pvp', 'query.port', 'rate-limit', 'rcon.password', 'rcon.port', 'region-file-compression', 'require-resource-pack', 'resource-pack', 'resource-pack-id', 'resource-pack-prompt', 'resource-pack-sha1', 'server-ip', 'server-port', 'simulation-distance', 'spawn-animals', 'spawn-monsters', 'spawn-npcs', 'spawn-protection', 'sync-chunk-writes', 'text-filtering-config', 'use-native-transport', 'view-distance', 'white-list');
 
 -- Which half of this row the seed owns.
 --
@@ -253,9 +297,9 @@ INSERT INTO server_info
   (id, modpack_name, modpack_version, minecraft_version, loader_name, loader_version,
    download_url, wiki_url, server_address, updated_by)
 VALUES
-  (1, 'Homestead', '1.3.7', '1.20.1',
-   'Fabric', '0.18.4',
-   'https://www.curseforge.com/minecraft/modpacks/homestead-cozy', 'https://cozystudios.org/homestead/intro/', 'tapestopnight.com', 'seed')
+  (1, 'ATM10 To the Sky', '2.2.0', '1.21.1',
+   'NeoForge', '21.1.250',
+   'https://www.curseforge.com/minecraft/modpacks/all-the-mods-10-sky', 'https://allthemods.github.io/alltheguides/', 'tapestopnight.com', 'seed')
 ON CONFLICT (id) DO UPDATE SET
   modpack_name = EXCLUDED.modpack_name,
   modpack_version = EXCLUDED.modpack_version,

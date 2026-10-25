@@ -46,14 +46,22 @@ PACK_DIR="${PACK_DIR:-/srv/mc/pack}"
 source "${HERE}/modpack.lock"
 # Built from the pin rather than written out, so --vs-pack cannot end up
 # comparing against the previous pack's zip after an upgrade. That is not
-# hypothetical: this line said "dregora-v1.1.2b" while the lock said Homestead.
-ZIP_PATH="${ZIP_PATH:-/srv/mc/dist/homestead-${MODPACK_VERSION}-serverpack.zip}"
+# hypothetical: this line said "dregora-v1.1.2b" while the lock said Homestead,
+# and then built "homestead-1.3.7-serverpack.zip" while the file was
+# "Homestead1.3.7_server_pack.zip". MODPACK_FILE is the name fetch-modpack.sh
+# actually stores, so use it rather than spelling one out.
+ZIP_PATH="${ZIP_PATH:-/srv/mc/dist/${MODPACK_FILE}}"
 STATE_DIR="${STATE_DIR:-/srv/mc/state}"
 BASELINE="${STATE_DIR}/drift-baseline.sha256"
 
 # Only these are compared. The rest of the pack is jars we never touch, plus
 # runtime state (world, logs, crash reports) that is SUPPOSED to change.
-SUBTREES=("config" "scripts")
+#
+# kubejs/server_scripts is where the freeze-when-empty script lives
+# (overlay/kubejs/), and KubeJS scripts are config in everything but name: a
+# hand edit there changes recipes or gamerules as surely as one in config/.
+# Only server_scripts — the rest of kubejs/ is mostly client-side or exported.
+SUBTREES=("config" "scripts" "kubejs/server_scripts")
 
 # Paths inside those subtrees that are runtime state despite living under
 # config/. Matched against the path as it appears in the manifest — note the
@@ -108,11 +116,15 @@ case "${MODE}" in
 
     # Compare manifests as sets of "hash  path" lines. diff on sorted files is
     # both faster and clearer than walking the tree twice.
-    changed=$(comm -13 <(sort "${BASELINE}") <(sort "${NOW}") | awk '{print $2}' | sort -u)
-    gone=$(comm -23 <(sort "${BASELINE}") <(sort "${NOW}") | awk '{print $2}' | sort -u)
+    # Paths are cut off the hash with sed, not `awk '{print $2}'`: ATM10 To
+    # the Sky has directories with spaces in them ("Excessive Utilities/"),
+    # and awk would truncate those paths at the first space.
+    path_of() { sed -E 's/^[0-9a-f]{64}[ *]+//'; }
+    changed=$(comm -13 <(sort "${BASELINE}") <(sort "${NOW}") | path_of | sort -u)
+    gone=$(comm -23 <(sort "${BASELINE}") <(sort "${NOW}") | path_of | sort -u)
 
-    added=$(comm -13 <(awk '{print $2}' "${BASELINE}" | sort) <(awk '{print $2}' "${NOW}" | sort))
-    removed=$(comm -23 <(awk '{print $2}' "${BASELINE}" | sort) <(awk '{print $2}' "${NOW}" | sort))
+    added=$(comm -13 <(path_of < "${BASELINE}" | sort) <(path_of < "${NOW}" | sort))
+    removed=$(comm -23 <(path_of < "${BASELINE}" | sort) <(path_of < "${NOW}" | sort))
     # "changed" so far includes added files; subtract them to separate the two.
     modified=$(comm -23 <(echo "${changed}") <(echo "${added}") | sed '/^$/d')
     unused="${gone}"; : "${unused}"
