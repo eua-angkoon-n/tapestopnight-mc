@@ -26,7 +26,8 @@ future reader does not have to guess — especially where the code looks wrong o
 | [0019](./0019-cozy-design-system.md) | Cozy light tokens, Thai-first typography, structural Edit Tiers |
 | [0020](./0020-milestones-from-advancements.md) | Milestones come from the world's advancement files, not Better Questing |
 | [0021](./0021-branch-protection-without-github-pro.md) | `main` protected by a checked-in ruleset plus a local hook, because a private repo on a free plan cannot be protected |
-| [0022](./0022-heap-on-neoforge-java21.md) | Start ATM10 To the Sky at `-Xmx7G` on Java 21, and measure before raising it |
+| [0022](./0022-heap-on-neoforge-java21.md) | ~~Start ATM10 To the Sky at `-Xmx7G` on Java 21~~ — measured at 8.84 GiB idle, **superseded by 0023** |
+| [0023](./0023-heap-on-forge-1201-java17.md) | Start The Casket of Reveries at `-Xmx7G` on Java 17, and measure before raising it |
 
 Three of these (0006, 0008, 0018) record a choice made **against** a recommendation. They say so, and
 they state the case for the option that was chosen — not the one that was rejected.

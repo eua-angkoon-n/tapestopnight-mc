@@ -84,3 +84,21 @@ The choice of `itzg/minecraft-server` survives a second pack change. The values:
 Unchanged and still mandatory: `SKIP_SERVER_PROPERTIES`, the disabled healthcheck,
 `stop_grace_period: 10m`, `max-tick-time=-1`. The pack's own `startserver.sh` is deleted on
 unpack — it would install a second NeoForge into the same directory.
+
+## What the move to The Casket of Reveries changed (2026-10-30)
+
+A third pack change, and the choice still holds. The values:
+
+| | ATM10 To the Sky 2.2.0 | The Casket of Reveries 2.2.9.8 |
+|---|---|---|
+| Image tag | `java21` | `java17` |
+| `TYPE` | `NEOFORGE` | `FORGE` |
+| `VERSION` | `1.21.1` | `1.20.1` |
+| Loader pin | `NEOFORGE_VERSION=21.1.250` | `FORGE_VERSION=47.4.4` |
+| `MEMORY` | 7G, measured 8.84 GiB idle (ADR-0022) | 7G until measured (ADR-0023) |
+| World | void skyblock | normal terrain (Tectonic, TerraBlender) |
+
+Unchanged and still mandatory: `SKIP_SERVER_PROPERTIES`, the disabled healthcheck,
+`stop_grace_period: 10m`, `max-tick-time=-1` — and with real terrain generation back, the
+reason for all four is back too. The pack's own `run.sh` is deleted on unpack for the same
+reason `startserver.sh` was. Its `libraries/` already holds Forge 47.4.4 and is kept.
