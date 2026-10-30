@@ -24,11 +24,12 @@ export interface Override {
 
 export const DEPLOYMENT_OVERRIDES: Readonly<Record<string, Override>> = {
   /*
-    The pack ships `max-tick-time=120000` — the vanilla two-minute watchdog.
+    The pack ships `max-tick-time=600000` — ten minutes, which is the pack
+    author already admitting the vanilla two minutes is too short.
 
-    On this pack that is not a safety net, it is a loaded gun. Generating
-    chunks for 307 mods legitimately blocks the main thread for longer than two
-    minutes, and the watchdog's response is to kill the server — during
+    On this Host any finite value is still a loaded gun. Generating chunks
+    through Tectonic, TerraBlender and a dozen structure mods legitimately
+    blocks the main thread for minutes, and the watchdog's response is to kill the server — during
     worldgen, which is when region files are half-written. This is prohibition
     1 in CLAUDE.md and it is the single most expensive value in this file.
   */
@@ -56,14 +57,30 @@ export const DEPLOYMENT_OVERRIDES: Readonly<Record<string, Override>> = {
     The pack ships `level-name=world`.
 
     Naming the world after the pack is what makes `/srv/mc/pack` legible: the
-    previous packs' worlds were `DregoraRL` and `Homestead`, and one glance said which pack the
+    previous packs' worlds were `DregoraRL`, `Homestead` and `atm10sky`, and one glance said which pack the
     directory on disk belonged to. It also has to agree with MC_WORLD_DIR in
     docker-compose.yml and LEVEL_NAME in backup.sh, which is why it is pinned
     here rather than left to whatever the next pack happens to default to.
   */
   "level-name": {
-    value: "atm10sky",
+    value: "reveries",
     why: "the world directory should name the pack; must match MC_WORLD_DIR and backup.sh",
+  },
+
+  /*
+    The pack ships `online-mode=false`.
+
+    That is a home server's setting: nobody is checked against Mojang, so a
+    player's UUID is derived from whatever name they typed. Here it would let
+    anyone join under an operator's name, and it would make every UUID the
+    Player Link and the Milestone scan store (ADR-0016, ADR-0020) one that
+    changes the moment authentication is switched back on. The tier stays
+    GUARDED — turning it off is a decision an admin may make knowingly — but it
+    does not start off.
+  */
+  "online-mode": {
+    value: "true",
+    why: "player identity (Player Link, Milestones, ops) rests on Mojang-verified UUIDs (ADR-0016)",
   },
 };
 
