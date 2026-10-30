@@ -36,9 +36,9 @@ const display = Fraunces({
 });
 
 export const metadata: Metadata = {
-  title: "ATM10 To the Sky — tapestopnight.com",
+  title: "The Casket of Reveries — tapestopnight.com",
   description:
-    "เซิร์ฟเวอร์ All the Mods 10 To the Sky — Minecraft 1.21.1 NeoForge. ดูสถานะเซิร์ฟเวอร์ ไอพี และลิงก์ดาวน์โหลด modpack",
+    "เซิร์ฟเวอร์ NightfallCraft: The Casket of Reveries — Minecraft 1.20.1 Forge. ดูสถานะเซิร์ฟเวอร์ ไอพี และลิงก์ดาวน์โหลด modpack",
 
   /*
    * The browser tab icon is the Server Icon — the same upload players see in

@@ -5,20 +5,21 @@
 -- and policy belongs in review, the same argument that keeps the Edit Tiers in
 -- TypeScript.
 --
--- ── What changed with ATM10 To the Sky (2026-10-25) ────────────────────────
+-- ── What changed with The Casket of Reveries (2026-10-30) ──────────────────
 --
--- The pack before this one was Homestead, a cozy farming pack, and this list
--- was built around it. ATM10 To the Sky is a skyblock: everyone starts on an
--- island in the void, and the story is Ex Deorum sieving, then tech —
--- Mekanism, Applied Energistics 2, Create. The farming line is trimmed, the
--- "go explore the biomes" line is gone (adventuring_time cannot happen in a
--- void world worth announcing), and the tech milestones are what people will
--- actually say out loud.
+-- ATM10 To the Sky was a tech skyblock, and this list was built around it.
+-- The Casket of Reveries is a souls-like RPG on Epic Fight: a story of
+-- retrieving lost sparks, and a long line of bosses from L_Ender's
+-- Cataclysm, Mowzie's Mobs, Bosses of Mass Destruction and the Aether. The
+-- tech rows go — Ex Deorum, AE2, Mekanism, Create and Farmer's Delight are
+-- not installed, so those rows can never match — and the boss kills are what
+-- people will actually say out loud.
 --
--- Homestead's own namespaces (cozystudioscore, duckling) are deleted below:
--- those mods are not installed, so those rows can never match. Farmer's
--- Delight IS in this pack, and its ids were re-checked against the 2.2.0 jar,
--- so its rows stay.
+-- The pack's own story bosses (tcr_bosses, EpicFight Nightfall) publish no
+-- advancements for their kills; only tcrcore's unlock_* progression ids exist,
+-- and their meaning cannot be read from the id alone, so they are not seeded.
+-- Add a 'kill' row for one once its entity id has been read from a real
+-- statistics file on the Host.
 --
 -- The kinds:
 --
@@ -27,14 +28,14 @@
 --
 -- ── Where these ids came from ──────────────────────────────────────────────
 --
--- Vanilla 1.21.1 ids come from the game itself and exist on any server. The
+-- Vanilla 1.20.1 ids come from the game itself and exist on any server. The
 -- pack's own ids were read out of the server pack's jars, not guessed: every
--- `data/<namespace>/advancement(s)/**.json` across all 322 mod jars, minus the
--- recipe tree — about 1,900 real advancements across 46 namespaces, of which
+-- `data/<namespace>/advancements/**.json` across all 159 mod jars, minus the
+-- recipe tree — 367 real advancements across 22 namespaces, of which
 -- only a handful are seeded. The rule applied was "would somebody say this out
 -- loud in chat". To add more later:
 --
---   docker exec tapestopnight-mc --     sh -c 'cat /data/atm10sky/advancements/*.json' | grep -o '"[a-z_]*:[a-z_/]*"' --     | sort -u | grep -v '^"minecraft:recipes'
+--   docker exec tapestopnight-mc --     sh -c 'cat /data/reveries/advancements/*.json' | grep -o '"[a-z_]*:[a-z_/]*"' --     | sort -u | grep -v '^"minecraft:recipes'
 --
 -- ⚠ The Thai labels for the pack's own advancements are written from the
 -- advancement ID, because the jars hold ids and there is no server-side
@@ -73,66 +74,55 @@ DELETE FROM notable_milestone
  WHERE kind = 'kill'
    AND key NOT LIKE 'minecraft:%';
 
--- Homestead's, and the vanilla rows that only made sense on it. Already
--- announced milestones live in player_milestone and are not touched.
+-- Earlier packs' rows. Already announced milestones live in player_milestone
+-- and are not touched. Deleting by namespace rather than by list: none of
+-- these mods is in The Casket of Reveries, so no row under them can match.
 DELETE FROM notable_milestone
  WHERE kind = 'advancement'
    AND (key LIKE 'cozystudioscore:%'
      OR key LIKE 'duckling:%'
-     OR key IN ('minecraft:story/mine_stone',
-                'minecraft:story/smelt_iron',
-                'minecraft:story/obtain_armor',
-                'minecraft:story/enchant_item',
-                'minecraft:husbandry/plant_seed',
-                'minecraft:husbandry/breed_an_animal',
-                'minecraft:husbandry/breed_all_animals',
-                'minecraft:husbandry/balanced_diet',
-                'minecraft:husbandry/silk_touch_nest',
-                'minecraft:husbandry/netherite_hoe',
-                'minecraft:adventure/trade',
-                'minecraft:nether/find_fortress',
-                'minecraft:nether/obtain_blaze_rod',
-                'minecraft:adventure/adventuring_time',
-                'minecraft:adventure/totem_of_undying',
-                'farmersdelight:main/get_rich_soil',
-                'farmersdelight:main/obtain_netherite_knife'));
+     OR key LIKE 'exdeorum:%'
+     OR key LIKE 'ae2:%'
+     OR key LIKE 'mekanism:%'
+     OR key LIKE 'create:%'
+     OR key LIKE 'farmersdelight:%');
 
 INSERT INTO notable_milestone (kind, key, label) VALUES
-  -- ── off the island: the first hours everyone shares ─────────────────────
-  -- `exdeorum:core/root` is deliberately absent: a root advancement is
-  -- granted on arrival, so announcing it would congratulate people for joining.
-  ('advancement', 'exdeorum:core/crook',        'ทำไม้เขี่ย (Crook) อันแรกแล้ว 🪝'),
-  ('advancement', 'exdeorum:core/barrel',       'ตั้งถังหมักแรกแล้ว 🛢️'),
-  ('advancement', 'exdeorum:core/string_mesh',  'ได้ตะแกรงร่อนชิ้นแรก — เริ่มร่อนหาแร่ได้แล้ว'),
-  ('advancement', 'minecraft:story/mine_diamond',      'เจอเพชรแล้ว 💎'),
+  -- ── the first hours ─────────────────────────────────────────────────────
+  ('advancement', 'minecraft:story/mine_diamond',       'เจอเพชรแล้ว 💎'),
   ('advancement', 'minecraft:husbandry/tame_an_animal', 'มีเพื่อนสัตว์เลี้ยงตัวแรกแล้ว 🐾'),
+  ('advancement', 'irons_spellbooks:irons_spellbooks/make_inscription_table', 'สร้างโต๊ะจารึกเวท เริ่มสายเวทมนตร์แล้ว 📜'),
+  ('advancement', 'bookofdragons:dragon_tamer',         'ฝึกมังกรตัวแรกได้แล้ว 🐲'),
 
-  -- ── tech: what this pack is actually about ──────────────────────────────
-  ('advancement', 'ae2:main/controller',        'สร้าง ME Controller แล้ว ระบบ AE2 เริ่มเดิน 💾'),
-  ('advancement', 'ae2:main/qnb',               'ทำ Quantum Network Bridge ได้แล้ว'),
-  ('advancement', 'mekanism:steel_ingot',       'ได้เหล็กกล้า (Steel) แท่งแรกจาก Mekanism'),
-  ('advancement', 'mekanism:digital_miner',     'สร้าง Digital Miner แล้ว ⛏️'),
-  ('advancement', 'mekanism:teleporter',        'สร้าง Teleporter ได้แล้ว 🌀'),
-  ('advancement', 'mekanism:mekasuit',          'ใส่ MekaSuit แล้ว 🦾'),
-  ('advancement', 'mekanism:sps',               'เดินเครื่อง SPS ได้แล้ว'),
-  ('advancement', 'mekanism:antimatter',        'ผลิต Antimatter ได้แล้ว ⚛️'),
-  ('advancement', 'create:steam_engine',        'เดินเครื่องจักรไอน้ำของ Create ได้แล้ว 🚂'),
-  ('advancement', 'create:train',               'สร้างรถไฟขบวนแรกแล้ว 🚆'),
-
-  -- ── the kitchen: Farmer's Delight is in this pack too ───────────────────
-  ('advancement', 'farmersdelight:main/place_cooking_pot',    'ตั้งหม้อต้มใบแรกแล้ว 🍲'),
-  ('advancement', 'farmersdelight:main/place_feast',          'จัดสำรับใหญ่เลี้ยงคนทั้งเซิร์ฟ 🍽️'),
-  ('advancement', 'farmersdelight:main/master_chef',          'เป็น Master Chef แล้ว 👨‍🍳'),
-
-  -- ── going further ───────────────────────────────────────────────────────
+  -- ── other worlds ────────────────────────────────────────────────────────
   ('advancement', 'minecraft:story/enter_the_nether',   'เข้าเนเธอร์ครั้งแรก 🔥'),
-  ('advancement', 'minecraft:nether/netherite_armor',   'ได้เกราะเนเธอไรต์ครบชุด'),
+  ('advancement', 'aether:enter_aether',                'ขึ้นไปถึงดินแดน Aether แล้ว ☁️'),
   ('advancement', 'minecraft:story/enter_the_end',      'เปิดประตูสู่ดิ The End แล้ว'),
+  ('advancement', 'minecraft:end/elytra',               'ได้ Elytra แล้ว บินได้เสียที 🪶'),
 
-  -- ── the two fights people still talk about ──────────────────────────────
+  -- ── the bosses: what this pack is actually about ───────────────────────
+  ('advancement', 'mowziesmobs:kill_ferrous_wroughtnaut', 'ล้ม Ferrous Wroughtnaut ได้แล้ว ⚔️'),
+  ('advancement', 'mowziesmobs:kill_frostmaw',          'ล้ม Frostmaw ได้แล้ว ❄️'),
+  ('advancement', 'mowziesmobs:kill_umvuthi',           'ล้ม Umvuthi ได้แล้ว ☀️'),
+  ('advancement', 'aether:bronze_dungeon',              'พิชิตดันเจี้ยนทองสัมฤทธิ์ของ Aether'),
+  ('advancement', 'aether:silver_dungeon',              'พิชิตดันเจี้ยนเงินของ Aether'),
+  ('advancement', 'aether:gold_dungeon',                'พิชิตดันเจี้ยนทองของ Aether ☀️'),
+  ('advancement', 'bosses_of_mass_destruction:adventure/night_lich_defeat', 'ปราบ Night Lich สำเร็จ 💀'),
+  ('advancement', 'bosses_of_mass_destruction:nether/gauntlet_defeat',      'ปราบ Nether Gauntlet สำเร็จ 🔥'),
+  ('advancement', 'bosses_of_mass_destruction:adventure/void_blossom_defeat', 'ปราบ Void Blossom สำเร็จ 🌸'),
+  ('advancement', 'bosses_of_mass_destruction:end/obsidilith_defeat',      'ปราบ Obsidilith สำเร็จ 🗿'),
+  ('advancement', 'cataclysm:kill_ender_guardian',      'ล้ม Ender Guardian ได้แล้ว'),
+  ('advancement', 'cataclysm:kill_ignis',               'ล้ม Ignis ได้แล้ว 🔥'),
+  ('advancement', 'cataclysm:kill_harbinger',           'ล้ม The Harbinger ได้แล้ว 🤖'),
+  ('advancement', 'cataclysm:kill_leviathan',           'ล้ม The Leviathan ได้แล้ว 🌊'),
+  ('advancement', 'cataclysm:kill_monstrosity',         'ล้ม Netherite Monstrosity ได้แล้ว'),
+  ('advancement', 'cataclysm:kill_maledictus',          'ล้ม Maledictus ได้แล้ว 👻'),
+  ('advancement', 'cataclysm:kill_scylla',              'ล้ม Scylla ได้แล้ว ⚡'),
+  ('advancement', 'cataclysm:kill_all_bosses',          'ล้มบอส Cataclysm ครบทุกตัวแล้ว 👑'),
+
+  -- ── the two vanilla fights people still talk about ──────────────────────
   ('advancement', 'minecraft:end/kill_dragon',          'ปราบ Ender Dragon สำเร็จ 🐉'),
   ('advancement', 'minecraft:nether/summon_wither',     'เรียก Wither ออกมาแล้ว — ขอให้โชคดี 💀'),
-  ('advancement', 'minecraft:end/elytra',               'ได้ Elytra แล้ว บินได้เสียที 🪶'),
   ('kill', 'minecraft:ender_dragon', 'ฆ่า Ender Dragon ได้ 🐉'),
   ('kill', 'minecraft:wither',       'ฆ่า Wither ได้ 💀')
 ON CONFLICT (kind, key) DO UPDATE SET label = EXCLUDED.label, enabled = TRUE;

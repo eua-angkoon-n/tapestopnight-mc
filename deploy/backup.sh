@@ -23,7 +23,7 @@ set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BACKUP_ROOT="${BACKUP_ROOT:-/srv/mc/backups}"
 PACK_DIR="${PACK_DIR:-/srv/mc/pack}"
-LEVEL_NAME="${LEVEL_NAME:-atm10sky}"
+LEVEL_NAME="${LEVEL_NAME:-reveries}"
 MC_CONTAINER="${MC_CONTAINER:-tapestopnight-mc}"
 DB_CONTAINER="${DB_CONTAINER:-tapestopnight-db}"
 
@@ -92,9 +92,10 @@ backup_world() {
     #
     # There used to be one here: save-off during a Chunky pregen queues the
     # generated chunks in the heap instead of on disk, next to a JVM already
-    # near its cgroup limit. ATM10 To the Sky ships no pregenerator (a void
-    # world has nothing worth pregenerating), so `chunky progress` would
-    # answer "unknown command" forever and the guard would look present while
+    # near its cgroup limit. ATM10 To the Sky shipped no pregenerator, and
+    # neither does The Casket of Reveries (checked against its 159 jars:
+    # no Chunky, no Chunk Pregenerator), so `chunky progress` would answer
+    # "unknown command" forever and the guard would look present while
     # matching nothing — the exact shape of bug that left the Dregora version
     # of this check worthless. Removed rather than left to rot. If a
     # pregenerator is ever added to the pack, the guard comes back with it,

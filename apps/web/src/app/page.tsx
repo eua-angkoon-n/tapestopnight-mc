@@ -39,7 +39,7 @@ export default async function HomePage() {
   const address = info?.serverAddress ?? "tapestopnight.com";
   const version = info
     ? `Minecraft ${info.minecraftVersion} · ${info.loaderName} ${info.loaderVersion}`
-    : "Minecraft 1.21.1 · NeoForge";
+    : "Minecraft 1.20.1 · Forge";
 
   return (
     <main>
@@ -55,7 +55,7 @@ export default async function HomePage() {
         */}
         <div
           className="media-still"
-          style={{ backgroundImage: `url("${mediaUrl("atm10sky-hero.webp")}")` }}
+          style={{ backgroundImage: `url("${mediaUrl("reveries-hero.webp")}")` }}
           aria-hidden="true"
         />
         <div className="scrim" />
@@ -110,7 +110,7 @@ export default async function HomePage() {
             }}
           >
             <p style={{ margin: 0, fontSize: "clamp(1.05rem, 2.4vw, 1.4rem)" }}>
-              {info?.modpackName ?? "ATM10 To the Sky"}
+              {info?.modpackName ?? "The Casket of Reveries"}
             </p>
             <LiveStatus
               initial={{

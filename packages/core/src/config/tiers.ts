@@ -51,9 +51,9 @@ export const TIERS: Readonly<Record<string, TierRule>> = {
   "level-type": {
     tier: "LOCKED",
     reason:
-      "ATM10 To the Sky เป็นโลกลอยฟ้า สร้างโดย skyblockbuilder:skyblock " +
-      "เปลี่ยนเป็นค่าอื่นแล้ว chunk ใหม่จะกลายเป็นภูมิประเทศปกติ เกาะของผู้เล่น " +
-      "และเควสต์ของ pack จะไม่ตรงกับโลกอีกต่อไป",
+      "ภูมิประเทศของ The Casket of Reveries สร้างโดย Tectonic และ Oh The Biomes " +
+      "We've Gone บนค่า default เปลี่ยนแล้ว chunk ใหม่จะสร้างคนละแบบกับของเดิม " +
+      "เกิดรอยต่อขาดกลางแผนที่ และโครงสร้างดันเจี้ยนกับบอสอาจไม่เกิดตามที่ pack ออกแบบ",
   },
   "max-tick-time": {
     tier: "LOCKED",
@@ -110,7 +110,7 @@ export const TIERS: Readonly<Record<string, TierRule>> = {
   difficulty: {
     tier: "GUARDED",
     reason:
-      "ATM10 To the Sky เป็น pack สายเทคและ automation ไม่ได้ปรับสมดุลรอบความยากสูง " +
+      "The Casket of Reveries เป็น pack สาย souls-like ที่บอสถูกปรับสมดุลไว้ที่ normal " +
       "เปลี่ยนได้ตามใจกลุ่มผู้เล่น แต่กระทบทุกคนบนเซิร์ฟพร้อมกัน",
   },
   pvp: {
