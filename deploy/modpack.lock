@@ -1,63 +1,70 @@
 # Modpack pin (ADR-0009).
 #
-# The payload is NOT in git: git cannot delta-compress jars, and ATM10 To the
-# Sky ships 322 of them. The zip lives in off-box storage; this file is how we
+# The payload is NOT in git: git cannot delta-compress jars, and The Casket of
+# Reveries ships 159 of them, 700 MB between them. The zip lives in off-box storage; this file is how we
 # prove the bytes are the right ones.
 #
 # Mod version drift is the most common cause of "my client can't join".
 # fetch-modpack.sh MUST verify SHA256 before unpacking.
 
-MODPACK_NAME="ATM10 To the Sky"
-MODPACK_VERSION="2.2.0"
-MODPACK_FILE="ATM10SKY-2.2.0-server.zip"
-MODPACK_SIZE_BYTES=527023907
-MODPACK_SHA256="9b6ae83dc3e39dee975736e2eabebf2914101f66a723501425a169553ae37041"
+MODPACK_NAME="NightfallCraft: The Casket of Reveries"
+MODPACK_VERSION="2.2.9.8"
+# Stored under a name without spaces. Upstream calls it
+# "Casket of Reveries 2.2.9.8 Server.zip"; fetch-modpack.sh downloads from
+# MODPACK_URL and writes it HERE, so the spaces stay in the URL and out of
+# every path check-drift.sh and the shell ever have to quote.
+MODPACK_FILE="casket-of-reveries-2.2.9.8-server.zip"
+MODPACK_SIZE_BYTES=809644040
+MODPACK_SHA256="87f964793ad5b4e1df1bbbfe0169e1c017b979f99a7f50bb64d5f69bef9cf641"
 
 # Where fetch-modpack.sh downloads from.
 #
-# Unlike Homestead, ATM publishes its server pack on CurseForge as an
-# "Additional File" of the client release (file 9262010, beside main file
-# 9261952), and the CDN serves it to curl without an API key. So the pin is
-# reproducible again: a clean box needs only this file. The SHA256 above is
-# what makes trusting a CDN acceptable.
-MODPACK_URL="https://mediafilez.forgecdn.net/files/9262/10/ATM10SKY-2.2.0-server.zip"
+# The server pack is a CurseForge "Additional File" of the 2.2.9.8 release
+# (file 9330273, beside main file 9330272), and the CDN serves it to curl
+# without an API key, as ATM's did. The SHA256 above is what makes trusting a
+# CDN acceptable. Hashed on 2026-10-30 from a download of exactly this URL.
+MODPACK_URL="https://mediafilez.forgecdn.net/files/9330/273/Casket%20of%20Reveries%202.2.9.8%20Server.zip"
 
-# EMPTY on purpose: this archive puts mods/, config/, kubejs/ … at its root,
-# with no wrapper directory. Homestead's did wrap (Homestead1.3.7/), so
-# re-check on every upgrade with: unzip -Z1 "$MODPACK_FILE" | head
+# EMPTY on purpose: this archive puts mods/, config/, libraries/ … at its
+# root, with no wrapper directory. Re-check on every upgrade with:
+#   unzip -Z1 "$MODPACK_FILE" | head
 MODPACK_ZIP_PREFIX=""
 
 # Where players get the pack, and where they read about it. Seeded into
 # server_info by db/seed/seed.ts so the website, the bot and this pin cannot
-# disagree about which pack is running.
-MODPACK_PAGE_URL="https://www.curseforge.com/minecraft/modpacks/all-the-mods-10-sky"
-MODPACK_WIKI_URL="https://allthemods.github.io/alltheguides/"
+# disagree about which pack is running. The pack has no wiki of its own; its
+# CurseForge page carries the story and the boss list, so both point there.
+MODPACK_PAGE_URL="https://www.curseforge.com/minecraft/modpacks/nightfallcraft-the-casket-of-reveries"
+MODPACK_WIKI_URL="https://www.curseforge.com/minecraft/modpacks/nightfallcraft-the-casket-of-reveries"
 
-# Runtime the pack requires. Read out of the pack's own startserver.sh, not
-# guessed: NEOFORGE_VERSION=21.1.250, and "Minecraft 1.21 requires Java 21".
+# Runtime the pack requires. Read out of the pack's own run.sh, not guessed:
+# it launches libraries/net/minecraftforge/forge/1.20.1-47.4.4/unix_args.txt.
+# Forge 1.20.1 runs on Java 17.
 #
-# Everything changed from the Homestead pin at once: Fabric became NeoForge,
-# 1.20.1 became 1.21.1 and Java 17 became Java 21.
-MINECRAFT_VERSION="1.21.1"
-LOADER_NAME="NeoForge"
-LOADER_VERSION="21.1.250"
-JAVA_MAJOR=21
+# Everything changed from the ATM10 pin at once: NeoForge became Forge,
+# 1.21.1 became 1.20.1 and Java 21 went back to Java 17.
+MINECRAFT_VERSION="1.20.1"
+LOADER_NAME="Forge"
+LOADER_VERSION="47.4.4"
+JAVA_MAJOR=17
 
 # Paths deleted after unpacking (ADR-0009).
 #
-# Only the pack's own launcher. startserver.sh downloads the NeoForge
-# installer and installs a SECOND server into the same directory, then loops
-# restarting it — under itzg, which installs NeoForge itself, anybody who runs
-# it while debugging gets a second Minecraft fighting the first over the world.
-# user_jvm_args.txt is that launcher's heap file; itzg ignores it, and leaving
-# it would suggest it is where the heap is set. It is not: see MEMORY in
-# docker-compose.yml.
+# Only the pack's own launcher. run.sh starts the Forge server the pack
+# pre-installed into libraries/ — under itzg, which runs the Forge installer
+# itself, anybody who runs it while debugging gets a second Minecraft fighting
+# the first over the world. user_jvm_args.txt is that launcher's heap file;
+# itzg ignores it, and leaving it would suggest it is where the heap is set.
+# It is not: see MEMORY in docker-compose.yml.
 #
-# No mods are deleted. NeoForge performs a mod-list handshake on connect, and
+# libraries/ is kept: it is the same Forge 47.4.4 itzg installs, so the
+# installer finds it in place rather than fetching it again.
+#
+# No mods are deleted. Forge performs a mod-list handshake on connect, and
 # client-only mods in this pack declare themselves and are skipped by the
 # loader on a dedicated server.
 CLIENT_ONLY_PATHS=(
-  "startserver.sh"
-  "startserver.bat"
+  "run.sh"
+  "run.bat"
   "user_jvm_args.txt"
 )

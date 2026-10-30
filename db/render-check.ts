@@ -105,7 +105,7 @@ const AWKWARD: Record<string, string> = {
   // rule escaped `§` to `\\u00A7`, Java read a literal backslash followed by
   // u00A7, and the MOTD displayed the escape sequence instead of a colour.
   "motd-section": "§6§lfrom the§8§l §mdepths§r §6§lof the §4§l§onether",
-  "motd-thai": "เซิร์ฟเวอร์ ATM10 To the Sky",
+  "motd-thai": "เซิร์ฟเวอร์ The Casket of Reveries",
   // Astral plane: Java wants a surrogate pair as two escapes, which is how a
   // JS string already holds it.
   "motd-astral": "boss 🐉 down",

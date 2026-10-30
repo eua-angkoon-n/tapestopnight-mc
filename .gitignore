@@ -31,10 +31,12 @@ optionsshaders.txt
 # unpacked vendor config/ and scripts/ trees are ignored.
 /config/
 /scripts/
+/defaultconfigs/
 
 # ── World and runtime state ─────────────────────────────────────────
 Homestead/
 atm10sky/
+reveries/
 world*/
 logs/
 crash-reports/

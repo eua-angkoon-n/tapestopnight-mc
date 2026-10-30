@@ -1,5 +1,5 @@
 ---
-status: proposed — measurement pending
+status: superseded by ADR-0023 — measured, then the pack was replaced
 supersedes: ADR-0018
 ---
 
@@ -52,8 +52,14 @@ After the first boot reaches `Done`, idle, and again after a session with player
 
 ## Measurements
 
-*Not yet taken.* Fill this table in, then change `status` to `accepted`.
-
 | When | Players | VmRSS | RssAnon | RssShmem | `max` events | Full GCs |
 |---|---|---|---|---|---|---|
-| | | | | | | |
+| 2026-10-25, first boot idle | 0 | 8.47 GiB | — | — | 0 | — |
+| 2026-10-30, after 5 days up, 3–4 players seen | 0 at the time | 8.84 GiB (9,268,212 kB) | 8.80 GiB | 0 | 0 | 0 in `gc.log` |
+
+8.84 GiB sits in the 8.6–9.6 band: **7G was right, and 8G would not have been affordable.**
+1.84 GiB of RSS beside a 7G heap is the number this ADR guessed at ("2–3 GiB") and the
+first NeoForge figure measured on this Host.
+
+The pack was replaced by The Casket of Reveries on 2026-10-30, before a session with
+players was measured. ADR-0023 carries the numbers forward.

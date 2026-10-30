@@ -12,19 +12,16 @@ unpacked.
 Do not edit it. If the pack is upgraded, replace it wholesale from the new zip
 and expect the render check to tell you what changed.
 
-It is ATM10 To the Sky 2.2.0's — 61 keys — and, unlike every pack before it,
-it is **not** inside the server pack zip, because that pack ships no
-`server.properties` at all. Its `startserver.sh` writes four keys into a fresh
-file (`allow-flight`, `motd`, `max-tick-time=180000`,
-`level-type=skyblockbuilder\:skyblock`) and Minecraft 1.21.1 fills in the rest
-on first boot.
+It is The Casket of Reveries 2.2.9.8's, taken verbatim from
+`Casket of Reveries 2.2.9.8 Server.zip` on 2026-10-30 (CRLF converted to LF,
+nothing else). This pack ships the file again; ATM10 To the Sky, the pack
+before it, did not, and its fixture had to be captured from the Host after a
+first boot.
 
-So this file was captured from the Host after the first boot on 2026-10-25,
-with `rcon.password` blanked and the three bootstrap overrides below reverted
-to what the pack alone would have produced (`enable-rcon=false`,
-`max-tick-time=180000`, `level-name=world`). That makes it the pack's file in
-every respect that matters, and keeps `deployment-overrides.ts` the only place
-our values come from.
+It is a 1.20.1 file and carries two keys 1.20.1 no longer reads
+(`max-build-height`, `snooper-enabled`). They stay: the file is the pack's, and
+the renderer passing an unknown key through untouched is part of what the
+check verifies.
 
 ## One key is deliberately not round-tripped
 
@@ -39,9 +36,9 @@ separately, which is the stricter question.
 Dregora's file did not contain `rcon.password` at all, which is the only reason
 the check passed without that carve-out until now.
 
-## Three values here are not what gets deployed
+## Four values here are not what gets deployed
 
-`max-tick-time`, `enable-rcon` and `level-name` are overridden at seed time, for
+`max-tick-time`, `enable-rcon`, `level-name` and `online-mode` are overridden at seed time, for
 reasons that are about this Host rather than about the pack. They live in
 `db/seed/deployment-overrides.ts` with the reasoning attached, and the generated
 SQL marks each one `-- OVERRIDDEN`. This file stays verbatim.

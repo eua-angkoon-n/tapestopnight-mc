@@ -50,13 +50,13 @@ export const env = {
    * The Chat Bridge.
    *
    * Both paths are under PACK_DIR, which the bot already mounts for Apply, so
-   * the bridge adds no new access to the Host. `level-name=atm10sky` is what
+   * the bridge adds no new access to the Host. `level-name=reveries` is what
    * makes the world directory that and not `world` — which also means this
    * default and the seeded `level-name` have to move together.
    */
   bridge: {
     logPath: optional("MC_LOG_PATH", `${optional("PACK_DIR", "/pack")}/logs/latest.log`),
-    worldDir: optional("MC_WORLD_DIR", `${optional("PACK_DIR", "/pack")}/atm10sky`),
+    worldDir: optional("MC_WORLD_DIR", `${optional("PACK_DIR", "/pack")}/reveries`),
     /** How often the log is read. Chat feels live at two seconds and costs nothing. */
     pollMs: Number(optional("BRIDGE_POLL_MS", "2000")),
     /**

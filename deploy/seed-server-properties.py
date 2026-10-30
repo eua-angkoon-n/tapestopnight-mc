@@ -13,12 +13,16 @@ database had nothing else it needed. A pack change is a different situation:
 Homestead shipped `max-tick-time=120000` and `level-name=world`, and both are
 wrong here in ways that cost more than a restart.
 
-ATM10 To the Sky ships NO server.properties at all. Its startserver.sh writes
-four keys into a fresh one instead (PACK_DEFAULTS below) and lets the server
-fill in the rest on first boot. fetch-modpack.sh deletes that launcher, so when
-the file is missing this script writes those four keys itself — otherwise the
-world would generate as ordinary terrain instead of a skyblock, and
-`level-type` cannot be changed after the first boot.
+The Casket of Reveries ships a server.properties again (ATM10 To the Sky did
+not), and it is a home server's file: `online-mode=false`, `enable-rcon=false`,
+`level-name=world`, `max-tick-time=600000`. Every one of those is wrong here
+before the first boot, not merely after it — see `want` below.
+
+If a future pack ships no file at all, this still works: it starts from an
+empty file and Minecraft fills in the rest on first boot. Anything that pack's
+own launcher would have written (ATM10 To the Sky's wrote `level-type`) has to
+be added to `want` for that pack, because `level-type` cannot be fixed after
+the world exists.
 
 Keep the list below in step with `db/seed/deployment-overrides.ts`, which is
 the reviewed source for the same decisions. They are stated twice on purpose —
@@ -57,28 +61,27 @@ want = {
     # afterwards generates a second world and orphans the first, throwing away
     # the whole first generation pass. It also has to agree with MC_WORLD_DIR
     # in docker-compose.yml and LEVEL_NAME in backup.sh.
-    "level-name": os.environ.get("LEVEL_NAME", "atm10sky"),
+    "level-name": os.environ.get("LEVEL_NAME", "reveries"),
+
+    # ── Authentication, which this pack ships switched OFF ────────────────
+    #
+    # The pack's file says online-mode=false. On the first boot that means
+    # every player's UUID is derived from the name they typed, so anyone can
+    # join as an operator's name, and every UUID the Player Link and the
+    # Milestone scan record (ADR-0016, ADR-0020) is one that changes the day
+    # it is switched back on. It has to be right before anyone joins.
+    "online-mode": "true",
 }
 
-# What ATM10 To the Sky's own startserver.sh writes when server.properties is
-# absent, copied verbatim (2.2.0). Used ONLY when the file does not exist yet;
-# `want` above is applied on top, so its max-tick-time wins over the pack's
-# 180000.
-#
-# level-type is the one that cannot be fixed later: skyblockbuilder only
-# shapes a world it generates itself.
-PACK_DEFAULTS = [
-    "allow-flight=true",
-    "motd=All the Mods 10 To the Sky",
-    "max-tick-time=180000",
-    "level-type=skyblockbuilder\\:skyblock",
-]
+# Used ONLY when the pack ships no server.properties. The Casket of Reveries
+# does ship one, so this is empty; `want` above is applied on top either way.
+PACK_DEFAULTS = []
 
 if os.path.exists(path):
     with open(path) as fh:
         lines = fh.read().splitlines()
 else:
-    print("no {} - starting from the pack's launcher defaults".format(path))
+    print("no {} - starting from an empty file".format(path))
     lines = list(PACK_DEFAULTS)
 
 out, seen = [], set()
@@ -109,4 +112,4 @@ with open(path, "w") as fh:
     fh.write("\n".join(header + out) + "\n")
 
 print("bootstrap keys set: " + ", ".join(sorted(want)))
-print("  max-tick-time=-1 and level-name={} matter before the first worldgen".format(want["level-name"]))
+print("  max-tick-time=-1, online-mode=true and level-name={} matter before the first boot".format(want["level-name"]))

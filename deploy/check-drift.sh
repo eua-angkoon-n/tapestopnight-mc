@@ -57,11 +57,14 @@ BASELINE="${STATE_DIR}/drift-baseline.sha256"
 # Only these are compared. The rest of the pack is jars we never touch, plus
 # runtime state (world, logs, crash reports) that is SUPPOSED to change.
 #
-# kubejs/server_scripts is where the freeze-when-empty script lives
-# (overlay/kubejs/), and KubeJS scripts are config in everything but name: a
-# hand edit there changes recipes or gamerules as surely as one in config/.
-# Only server_scripts — the rest of kubejs/ is mostly client-side or exported.
-SUBTREES=("config" "scripts" "kubejs/server_scripts")
+# defaultconfigs/ is Forge's: what it copies into a world's serverconfig/ the
+# first time that world loads. The Casket of Reveries ships Iron's Spellbooks
+# and FTB Essentials server settings there, so a hand edit to it changes the
+# server as surely as one in config/ — just not until the next new world,
+# which is exactly when nobody would think to look.
+#
+# kubejs/server_scripts left with ATM10 To the Sky: this pack has no KubeJS.
+SUBTREES=("config" "scripts" "defaultconfigs")
 
 # Paths inside those subtrees that are runtime state despite living under
 # config/. Matched against the path as it appears in the manifest — note the
