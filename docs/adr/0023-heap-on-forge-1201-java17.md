@@ -1,5 +1,5 @@
 ---
-status: proposed — measurement pending
+status: superseded by ADR-0024 — first boot measured, then the pack was replaced
 supersedes: ADR-0022
 ---
 
@@ -64,3 +64,8 @@ with players exploring new terrain:
 8.03 GiB is under the 8.6 GiB line, but it was read minutes after boot with no player
 exploring, while ATM10 at the same heap grew 8.47 → 8.84 GiB over five days. Not enough to
 raise the heap on; mean TPS was 19.46 at the time.
+
+The session row was never taken. The server was stopped on 2026-11-06 and the pack was
+replaced by Prominence II: Hasturian Era on 2026-11-20. One thing was learned in between and
+belongs here: on 2026-11-01 a full-speed Chunky pregeneration ran this 7G heap out of memory.
+ADR-0024 carries the numbers forward.

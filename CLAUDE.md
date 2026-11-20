@@ -22,7 +22,7 @@ project out. `.claude/hooks/guard.ps1` enforces this and will refuse the command
 
 `217.216.111.122` (`vmi3563957.contaboserver.net`) — Contabo VPS, Ubuntu 24.04,
 6 vCPU, 12 GB RAM, 4 GB swap (`vm.swappiness=1`), 193 GB disk. `ufw` allows
-22, 80, 443, 25565/tcp, 24454/udp (unused since ATM10 To the Sky), 16261-16262/udp
+22, 80, 443, 25565/tcp, 24454/udp (unused since Homestead), 16261-16262/udp
 (the stopped Zomboid server) and nothing else. Caddy fronts everything:
 `tapestopnight.com` to `127.0.0.1:3002`, `ledger.tapestopnight.com` to `127.0.0.1:3001`.
 
@@ -30,7 +30,7 @@ Compose project `tapestopnight-mc`, defined at `/srv/mc/repo/deploy/docker-compo
 
 | Container | What it is |
 |---|---|
-| `tapestopnight-mc` | the Game Server — Forge 1.20.1, The Casket of Reveries, `MEMORY=7G` (unmeasured, ADR-0023) |
+| `tapestopnight-mc` | the Game Server — Fabric 1.20.1, Prominence II: Hasturian Era, `MEMORY=7G` (unmeasured, ADR-0024) |
 | `tapestopnight-db` | Postgres 16 — the Desired Config, source of truth |
 | `tapestopnight-socket-proxy` | scoped Docker access for the Control Plane |
 | `tapestopnight-poller` | the **only** thing that probes the Game Server |
@@ -84,9 +84,9 @@ mid-chunk-write. `stop_grace_period` is 10m for the same reason: cutting a
 world save short is how region files corrupt. See ADR-0005.
 
 (The original reason was OpenTerrainGenerator, which only Dregora had. The rule
-outlived the mod; do not treat a pack change as having retired it. The Casket
-of Reveries generates real terrain through Tectonic and TerraBlender, so it
-applies at full strength again.)
+outlived the mod; do not treat a pack change as having retired it. Prominence
+II generates real terrain through TerraBlender and Regions Unexplored, so it
+applies at full strength.)
 
 **2. Never run `docker compose build` on the Host.** A Next.js build peaks at
 1–2 GB of RSS beside an 8 GB JVM. The OOM killer picks the largest process, which
@@ -99,10 +99,11 @@ vanishes. Wanting to edit it is the reliable sign you are working the wrong stag
 of the pipeline. See ADR-0002.
 
 **4. The heap, the Aikar flags and the GC logging are load-bearing.** Since
-2026-10-30 the pack is The Casket of Reveries on Forge 1.20.1 and Java 17,
-and the heap is **7G, NOT YET MEASURED** — ADR-0023 holds the gate that
-decides whether it moves. ATM10 To the Sky, before it, measured 8.84 GiB RSS
-idle at 7G (ADR-0022). What follows is the Homestead record, kept because the
+2026-11-20 the pack is Prominence II: Hasturian Era on Fabric 1.20.1 and
+Java 17, and the heap is **7G, NOT YET MEASURED** — ADR-0024 holds the gate
+that decides whether it moves. Before it, The Casket of Reveries measured
+8.03 GiB RSS at first boot at 7G (ADR-0023) and ATM10 To the Sky 8.84 GiB
+idle (ADR-0022). What follows is the Homestead record, kept because the
 reasoning carries over: for Homestead, 8G was measured. RSS was
 9.24 GiB idle and peaked at 9.51 GiB of the 10 GiB `mem_limit` during a
 three-dimension pregeneration, with zero full GCs — it passes its gate with
