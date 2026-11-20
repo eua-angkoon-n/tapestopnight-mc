@@ -1,70 +1,76 @@
 # Modpack pin (ADR-0009).
 #
-# The payload is NOT in git: git cannot delta-compress jars, and The Casket of
-# Reveries ships 159 of them, 700 MB between them. The zip lives in off-box storage; this file is how we
+# The payload is NOT in git: git cannot delta-compress jars, and Prominence II
+# ships 373 of them, 800 MB between them. The zip lives in off-box storage; this file is how we
 # prove the bytes are the right ones.
 #
 # Mod version drift is the most common cause of "my client can't join".
 # fetch-modpack.sh MUST verify SHA256 before unpacking.
 
-MODPACK_NAME="NightfallCraft: The Casket of Reveries"
-MODPACK_VERSION="2.2.9.8"
-# Stored under a name without spaces. Upstream calls it
-# "Casket of Reveries 2.2.9.8 Server.zip"; fetch-modpack.sh downloads from
-# MODPACK_URL and writes it HERE, so the spaces stay in the URL and out of
-# every path check-drift.sh and the shell ever have to quote.
-MODPACK_FILE="casket-of-reveries-2.2.9.8-server.zip"
-MODPACK_SIZE_BYTES=809644040
-MODPACK_SHA256="87f964793ad5b4e1df1bbbfe0169e1c017b979f99a7f50bb64d5f69bef9cf641"
+MODPACK_NAME="Prominence II: Hasturian Era"
+MODPACK_VERSION="4.1.9"
+# Stored under a shorter, lower-case name. Upstream calls it
+# "Prominence_II_Hasturian_Era_4.1.9_server_pack.zip"; fetch-modpack.sh
+# downloads from MODPACK_URL and writes it HERE.
+MODPACK_FILE="prominence-ii-hasturian-era-4.1.9-server.zip"
+MODPACK_SIZE_BYTES=1133643907
+MODPACK_SHA256="0225d5b5e3cb119ae1d543527d38cbbd8a7d18507469b25ac85feb4c9af160bc"
 
 # Where fetch-modpack.sh downloads from.
 #
-# The server pack is a CurseForge "Additional File" of the 2.2.9.8 release
-# (file 9330273, beside main file 9330272), and the CDN serves it to curl
-# without an API key, as ATM's did. The SHA256 above is what makes trusting a
-# CDN acceptable. Hashed on 2026-10-30 from a download of exactly this URL.
-MODPACK_URL="https://mediafilez.forgecdn.net/files/9330/273/Casket%20of%20Reveries%202.2.9.8%20Server.zip"
+# The server pack is a CurseForge "Additional File" of the 4.1.9 release
+# (file 9690745, beside main file 9690664; project 466901), and the CDN serves
+# it to curl without an API key, as the last two packs' did. The SHA256 above
+# is what makes trusting a CDN acceptable. Hashed on 2026-11-20 from a
+# download of exactly this URL.
+#
+# This pack releases about weekly and has shipped a broken server pack twice
+# (4.0.2, 4.0.4, both re-uploaded). The pin is what stops a re-upload under
+# the same name from landing here unnoticed.
+MODPACK_URL="https://mediafilez.forgecdn.net/files/9690/745/Prominence_II_Hasturian_Era_4.1.9_server_pack.zip"
 
-# EMPTY on purpose: this archive puts mods/, config/, libraries/ … at its
-# root, with no wrapper directory. Re-check on every upgrade with:
+# EMPTY on purpose: this archive puts mods/, config/, datapacks/ … at its
+# root, with no wrapper directory (Homestead, also a ServerPackCreator pack,
+# had one). Re-check on every upgrade with:
 #   unzip -Z1 "$MODPACK_FILE" | head
 MODPACK_ZIP_PREFIX=""
 
 # Where players get the pack, and where they read about it. Seeded into
 # server_info by db/seed/seed.ts so the website, the bot and this pin cannot
-# disagree about which pack is running. The pack has no wiki of its own; its
-# CurseForge page carries the story and the boss list, so both point there.
-MODPACK_PAGE_URL="https://www.curseforge.com/minecraft/modpacks/nightfallcraft-the-casket-of-reveries"
-MODPACK_WIKI_URL="https://www.curseforge.com/minecraft/modpacks/nightfallcraft-the-casket-of-reveries"
+# disagree about which pack is running.
+MODPACK_PAGE_URL="https://www.curseforge.com/minecraft/modpacks/prominence-2-hasturian-era"
+MODPACK_WIKI_URL="https://servers.cinderstonestudios.com/create-server"
 
-# Runtime the pack requires. Read out of the pack's own run.sh, not guessed:
-# it launches libraries/net/minecraftforge/forge/1.20.1-47.4.4/unix_args.txt.
-# Forge 1.20.1 runs on Java 17.
+# Runtime the pack requires. Read out of the pack's own variables.txt, not
+# guessed: MINECRAFT_VERSION=1.20.1, MODLOADER=Fabric, MODLOADER_VERSION=0.20.1,
+# RECOMMENDED_JAVA_VERSION=17.
 #
-# Everything changed from the ATM10 pin at once: NeoForge became Forge,
-# 1.21.1 became 1.20.1 and Java 21 went back to Java 17.
+# From the Casket of Reveries pin only the loader changed: Forge became
+# Fabric again, as it was for Homestead. Minecraft and Java did not move.
 MINECRAFT_VERSION="1.20.1"
-LOADER_NAME="Forge"
-LOADER_VERSION="47.4.4"
+LOADER_NAME="Fabric"
+LOADER_VERSION="0.20.1"
 JAVA_MAJOR=17
 
 # Paths deleted after unpacking (ADR-0009).
 #
-# Only the pack's own launcher. run.sh starts the Forge server the pack
-# pre-installed into libraries/ — under itzg, which runs the Forge installer
-# itself, anybody who runs it while debugging gets a second Minecraft fighting
-# the first over the world. user_jvm_args.txt is that launcher's heap file;
-# itzg ignores it, and leaving it would suggest it is where the heap is set.
-# It is not: see MEMORY in docker-compose.yml.
+# Only the pack's own launcher, which is a foot-gun under itzg rather than
+# client payload: start.sh downloads the ServerStarterJar and installs a
+# SECOND server into the same directory. Anybody who runs it while debugging
+# gets a second Minecraft that fights the first over the world. variables.txt
+# is that launcher's settings file (JAVA_ARGS="-Xmx8G -Xms8G"); itzg ignores
+# it, and leaving it would suggest it is where the heap is set. It is not: see
+# MEMORY in docker-compose.yml.
 #
-# libraries/ is kept: it is the same Forge 47.4.4 itzg installs, so the
-# installer finds it in place rather than fetching it again.
-#
-# No mods are deleted. Forge performs a mod-list handshake on connect, and
-# client-only mods in this pack declare themselves and are skipped by the
-# loader on a dedicated server.
+# No mods are deleted. Fabric skips a mod that declares
+# `"environment": "client"` on a dedicated server; of this archive's 373 jars
+# three declare that and 370 declare `*` — the pack's author already removed
+# the client-side set (the client pack has about 200 more).
 CLIENT_ONLY_PATHS=(
-  "run.sh"
-  "run.bat"
-  "user_jvm_args.txt"
+  "start.sh"
+  "start.bat"
+  "start.ps1"
+  "install_java.sh"
+  "install_java.ps1"
+  "variables.txt"
 )

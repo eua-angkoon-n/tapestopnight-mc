@@ -102,3 +102,25 @@ Unchanged and still mandatory: `SKIP_SERVER_PROPERTIES`, the disabled healthchec
 `stop_grace_period: 10m`, `max-tick-time=-1` — and with real terrain generation back, the
 reason for all four is back too. The pack's own `run.sh` is deleted on unpack for the same
 reason `startserver.sh` was. Its `libraries/` already holds Forge 47.4.4 and is kept.
+
+## What the move to Prominence II: Hasturian Era changed (2026-11-20)
+
+A fourth pack change, and the choice still holds. The values:
+
+| | The Casket of Reveries 2.2.9.8 | Prominence II: Hasturian Era 4.1.9 |
+|---|---|---|
+| Image tag | `java17` | `java17` |
+| `TYPE` | `FORGE` | `FABRIC` |
+| `VERSION` | `1.20.1` | `1.20.1` |
+| Loader pin | `FORGE_VERSION=47.4.4` | `FABRIC_LOADER_VERSION=0.20.1` |
+| `MEMORY` | 7G, 8.03 GiB at first boot (ADR-0023) | 7G until measured (ADR-0024) |
+| `server.properties` | shipped by the pack | **not shipped** — vanilla defaults, bootstrapped |
+
+Unchanged and still mandatory: `SKIP_SERVER_PROPERTIES`, the disabled healthcheck,
+`stop_grace_period: 10m`, `max-tick-time=-1`. The pack's own `start.sh` is deleted on unpack
+for the same reason `run.sh` was — it installs a second server into the same directory.
+
+The image's `AUTO_CURSEFORGE` type was considered and not used: it needs an API key in
+`deploy/.env`, it resolves mods at boot rather than from a hashed archive (ADR-0009), and the
+pack's maintainer directs server operators to the CurseForge server pack, which is what
+`deploy/modpack.lock` pins.

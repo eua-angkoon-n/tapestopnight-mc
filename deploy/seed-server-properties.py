@@ -13,16 +13,17 @@ database had nothing else it needed. A pack change is a different situation:
 Homestead shipped `max-tick-time=120000` and `level-name=world`, and both are
 wrong here in ways that cost more than a restart.
 
-The Casket of Reveries ships a server.properties again (ATM10 To the Sky did
-not), and it is a home server's file: `online-mode=false`, `enable-rcon=false`,
-`level-name=world`, `max-tick-time=600000`. Every one of those is wrong here
+Prominence II ships NO server.properties (The Casket of Reveries did; ATM10 To
+the Sky did not either), and its start.sh writes none — only eula.txt. So this
+script starts from an empty file and Minecraft 1.20.1 fills in the rest with
+its own defaults on first boot: `level-name=world`, `max-tick-time=60000`,
+`enable-rcon=false`, `allow-flight=false`. Every one of those is wrong here
 before the first boot, not merely after it — see `want` below.
 
-If a future pack ships no file at all, this still works: it starts from an
-empty file and Minecraft fills in the rest on first boot. Anything that pack's
-own launcher would have written (ATM10 To the Sky's wrote `level-type`) has to
-be added to `want` for that pack, because `level-type` cannot be fixed after
-the world exists.
+Anything a pack's own launcher would have written (ATM10 To the Sky's wrote
+`level-type`) has to go in PACK_DEFAULTS for that pack, because `level-type`
+cannot be fixed after the world exists. This pack's launcher writes nothing,
+and the world is the default generator shaped by the pack's mods.
 
 Keep the list below in step with `db/seed/deployment-overrides.ts`, which is
 the reviewed source for the same decisions. They are stated twice on purpose —
@@ -46,8 +47,8 @@ want = {
 
     # ── The watchdog, which is the dangerous one ──────────────────────────
     #
-    # The pack ships the vanilla two-minute default. Generating chunks for a
-    # 307-mod pack blocks the main thread for longer than that, and the
+    # Left alone, the server writes the vanilla one-minute default. Generating
+    # chunks for a 373-mod pack blocks the main thread for longer than that, and the
     # watchdog's response is to kill the server — during worldgen, which is
     # when region files are half-written. Waiting for Apply to fix it means
     # the one boot it is wrong for is the one that matters.
@@ -61,20 +62,20 @@ want = {
     # afterwards generates a second world and orphans the first, throwing away
     # the whole first generation pass. It also has to agree with MC_WORLD_DIR
     # in docker-compose.yml and LEVEL_NAME in backup.sh.
-    "level-name": os.environ.get("LEVEL_NAME", "reveries"),
+    "level-name": os.environ.get("LEVEL_NAME", "prominence"),
 
-    # ── Authentication, which this pack ships switched OFF ────────────────
+    # ── Flight, which vanilla defaults to OFF ─────────────────────────────
     #
-    # The pack's file says online-mode=false. On the first boot that means
-    # every player's UUID is derived from the name they typed, so anyone can
-    # join as an operator's name, and every UUID the Player Link and the
-    # Milestone scan record (ADR-0016, ADR-0020) is one that changes the day
-    # it is switched back on. It has to be right before anyone joins.
-    "online-mode": "true",
+    # With no pack file the server writes allow-flight=false, and then kicks
+    # anyone airborne for five seconds "for flying" — which in this pack is a
+    # player on a Mythic Mount, in an Ad Astra jet suit or under an elytra,
+    # playing normally. Every earlier pack shipped it true.
+    "allow-flight": "true",
 }
 
-# Used ONLY when the pack ships no server.properties. The Casket of Reveries
-# does ship one, so this is empty; `want` above is applied on top either way.
+# Used ONLY when the pack ships no server.properties, for what the pack's own
+# launcher would have written. Prominence II's start.sh writes none, so this
+# is empty; `want` above is applied on top either way.
 PACK_DEFAULTS = []
 
 if os.path.exists(path):
@@ -112,4 +113,4 @@ with open(path, "w") as fh:
     fh.write("\n".join(header + out) + "\n")
 
 print("bootstrap keys set: " + ", ".join(sorted(want)))
-print("  max-tick-time=-1, online-mode=true and level-name={} matter before the first boot".format(want["level-name"]))
+print("  max-tick-time=-1, allow-flight=true and level-name={} matter before the first boot".format(want["level-name"]))

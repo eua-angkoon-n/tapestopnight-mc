@@ -24,11 +24,11 @@ export interface Override {
 
 export const DEPLOYMENT_OVERRIDES: Readonly<Record<string, Override>> = {
   /*
-    The pack ships `max-tick-time=600000` — ten minutes, which is the pack
-    author already admitting the vanilla two minutes is too short.
+    The pack ships no server.properties, so the server writes vanilla's
+    `max-tick-time=60000` — one minute.
 
-    On this Host any finite value is still a loaded gun. Generating chunks
-    through Tectonic, TerraBlender and a dozen structure mods legitimately
+    On this Host any finite value is a loaded gun. Generating chunks
+    through TerraBlender, Regions Unexplored and a dozen structure mods legitimately
     blocks the main thread for minutes, and the watchdog's response is to kill the server — during
     worldgen, which is when region files are half-written. This is prohibition
     1 in CLAUDE.md and it is the single most expensive value in this file.
@@ -39,7 +39,7 @@ export const DEPLOYMENT_OVERRIDES: Readonly<Record<string, Override>> = {
   },
 
   /*
-    The pack ships `enable-rcon=false`, which is the right default for someone
+    Vanilla's default is `enable-rcon=false`, which is the right default for someone
     running this at home and completely wrong here.
 
     RCON is how the Control Plane exists at all: the bot's /players list, every
@@ -54,33 +54,36 @@ export const DEPLOYMENT_OVERRIDES: Readonly<Record<string, Override>> = {
   },
 
   /*
-    The pack ships `level-name=world`.
+    Vanilla's default is `level-name=world`.
 
     Naming the world after the pack is what makes `/srv/mc/pack` legible: the
-    previous packs' worlds were `DregoraRL`, `Homestead` and `atm10sky`, and one glance said which pack the
+    previous packs' worlds were `DregoraRL`, `Homestead`, `atm10sky` and `reveries`, and one glance said which pack the
     directory on disk belonged to. It also has to agree with MC_WORLD_DIR in
     docker-compose.yml and LEVEL_NAME in backup.sh, which is why it is pinned
     here rather than left to whatever the next pack happens to default to.
   */
   "level-name": {
-    value: "reveries",
+    value: "prominence",
     why: "the world directory should name the pack; must match MC_WORLD_DIR and backup.sh",
   },
 
   /*
-    The pack ships `online-mode=false`.
+    Vanilla's default is `allow-flight=false`, and every pack before this one
+    shipped a file that said true.
 
-    That is a home server's setting: nobody is checked against Mojang, so a
-    player's UUID is derived from whatever name they typed. Here it would let
-    anyone join under an operator's name, and it would make every UUID the
-    Player Link and the Milestone scan store (ADR-0016, ADR-0020) one that
-    changes the moment authentication is switched back on. The tier stays
-    GUARDED — turning it off is a decision an admin may make knowingly — but it
-    does not start off.
+    With it false the server kicks anyone airborne for five seconds "for
+    flying" — which in Prominence II is a player on a Mythic Mount, in an Ad
+    Astra jet suit or under an elytra, playing normally. The tier is LOCKED
+    with exactly that reason, so the seeded value has to be the one the lock
+    describes; a LOCKED row seeded false could not be corrected from any
+    surface.
+
+    (The `online-mode` override that stood here left with The Casket of
+    Reveries, which shipped it false. Vanilla's default is true.)
   */
-  "online-mode": {
+  "allow-flight": {
     value: "true",
-    why: "player identity (Player Link, Milestones, ops) rests on Mojang-verified UUIDs (ADR-0016)",
+    why: "modded flight (mounts, jet suits, elytra) is normal play; vanilla's false kicks for it",
   },
 };
 
