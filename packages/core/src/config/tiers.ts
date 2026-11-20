@@ -51,8 +51,8 @@ export const TIERS: Readonly<Record<string, TierRule>> = {
   "level-type": {
     tier: "LOCKED",
     reason:
-      "ภูมิประเทศของ The Casket of Reveries สร้างโดย Tectonic และ Oh The Biomes " +
-      "We've Gone บนค่า default เปลี่ยนแล้ว chunk ใหม่จะสร้างคนละแบบกับของเดิม " +
+      "ภูมิประเทศของ Prominence II สร้างโดย TerraBlender และ Regions Unexplored " +
+      "บนค่า default เปลี่ยนแล้ว chunk ใหม่จะสร้างคนละแบบกับของเดิม " +
       "เกิดรอยต่อขาดกลางแผนที่ และโครงสร้างดันเจี้ยนกับบอสอาจไม่เกิดตามที่ pack ออกแบบ",
   },
   "max-tick-time": {
@@ -110,8 +110,8 @@ export const TIERS: Readonly<Record<string, TierRule>> = {
   difficulty: {
     tier: "GUARDED",
     reason:
-      "The Casket of Reveries เป็น pack สาย souls-like ที่บอสถูกปรับสมดุลไว้ที่ normal " +
-      "เปลี่ยนได้ตามใจกลุ่มผู้เล่น แต่กระทบทุกคนบนเซิร์ฟพร้อมกัน",
+      "Prominence II เป็น pack สาย RPG ที่มีระบบเลเวลและการปรับความยากของตัวเอง " +
+      "ซ้อนอยู่บนค่านี้ เปลี่ยนได้ตามใจกลุ่มผู้เล่น แต่กระทบทุกคนบนเซิร์ฟพร้อมกัน",
   },
   pvp: {
     tier: "GUARDED",

@@ -57,11 +57,14 @@ BASELINE="${STATE_DIR}/drift-baseline.sha256"
 # Only these are compared. The rest of the pack is jars we never touch, plus
 # runtime state (world, logs, crash reports) that is SUPPOSED to change.
 #
-# defaultconfigs/ is Forge's: what it copies into a world's serverconfig/ the
-# first time that world loads. The Casket of Reveries ships Iron's Spellbooks
-# and FTB Essentials server settings there, so a hand edit to it changes the
-# server as surely as one in config/ — just not until the next new world,
-# which is exactly when nobody would think to look.
+# defaultconfigs/ is where FTB Library reads the defaults it copies out the
+# first time they are needed. Prominence II ships FTB Library, FTB Quests and
+# FTB XMod Compat defaults there, so a hand edit to it changes the server as
+# surely as one in config/ — just not until the next fresh copy, which is
+# exactly when nobody would think to look.
+#
+# datapacks/ is NOT listed: the pack's datapack zips are loaded by Paxi from
+# config/paxi/datapacks, which `config` already covers.
 #
 # kubejs/server_scripts left with ATM10 To the Sky: this pack has no KubeJS.
 SUBTREES=("config" "scripts" "defaultconfigs")

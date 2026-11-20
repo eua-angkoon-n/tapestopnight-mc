@@ -23,7 +23,7 @@ set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BACKUP_ROOT="${BACKUP_ROOT:-/srv/mc/backups}"
 PACK_DIR="${PACK_DIR:-/srv/mc/pack}"
-LEVEL_NAME="${LEVEL_NAME:-reveries}"
+LEVEL_NAME="${LEVEL_NAME:-prominence}"
 MC_CONTAINER="${MC_CONTAINER:-tapestopnight-mc}"
 DB_CONTAINER="${DB_CONTAINER:-tapestopnight-db}"
 
@@ -88,18 +88,21 @@ backup_world() {
       return 0
     fi
 
-    # ── No pre-generation guard on this pack ────────────────────────
+    # ── No pre-generation guard YET, and this pack needs one ────────
     #
-    # There used to be one here: save-off during a Chunky pregen queues the
+    # There used to be one here: save-off during a pregen queues the
     # generated chunks in the heap instead of on disk, next to a JVM already
-    # near its cgroup limit. ATM10 To the Sky shipped no pregenerator, and
-    # neither does The Casket of Reveries (checked against its 159 jars:
-    # no Chunky, no Chunk Pregenerator), so `chunky progress` would answer
-    # "unknown command" forever and the guard would look present while
-    # matching nothing — the exact shape of bug that left the Dregora version
-    # of this check worthless. Removed rather than left to rot. If a
-    # pregenerator is ever added to the pack, the guard comes back with it,
-    # matched against that mod's real output.
+    # near its cgroup limit. It was removed when the pack stopped shipping a
+    # pregenerator, because a guard that greps for output the server never
+    # prints looks present while matching nothing — the exact shape of bug
+    # that left the Dregora version of this check worthless.
+    #
+    # Prominence II ships Chunky 1.3.146 (mods/Chunky-1.3.146.jar), so the
+    # hazard is back. The guard is deliberately NOT written from memory of
+    # what `chunky progress` prints: read its real output over RCON on this
+    # server, idle and with a task running, and match against that. Until
+    # then, do not start a pregen that will still be running at 05:00 —
+    # or disable the cron line for the duration, as on 2026-11-01.
 
     log "pausing saves and flushing"
     trap saves_on EXIT

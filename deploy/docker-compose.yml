@@ -7,10 +7,10 @@ name: tapestopnight-mc
 
 services:
   mc:
-    # java17: The Casket of Reveries is Minecraft 1.20.1 on Forge 47.4.4, the
-    # same Java Homestead ran on. Forge 47 on Java 21 mostly works, and "mostly"
-    # is how a 159-mod pack produces a mixin crash that names a mod rather than
-    # the JRE. → ADR-0005, ADR-0023
+    # java17: Prominence II is Minecraft 1.20.1 on Fabric 0.20.1, and its own
+    # variables.txt says RECOMMENDED_JAVA_VERSION=17. 21 mostly works, and
+    # "mostly" is how a 373-mod pack produces a mixin crash that names a mod
+    # rather than the JRE. → ADR-0005, ADR-0024
     image: itzg/minecraft-server:java17
     container_name: tapestopnight-mc
     restart: unless-stopped
@@ -22,21 +22,21 @@ services:
       # published to the Host — see the design notes.
       - "25565:25565"
 
-      # No 24454/udp: The Casket of Reveries does not ship Simple Voice Chat, so
+      # No 24454/udp: Prominence II does not ship Simple Voice Chat either, so
       # nothing would listen on it. The ufw rule is left in place, harmless.
 
     volumes:
       # The pack materialised by deploy/fetch-modpack.sh from the pinned
-      # SHA256. itzg runs the Forge installer in here on first boot; the
-      # pack's own run.sh is deleted by fetch-modpack.sh.
+      # SHA256. The Fabric server launcher installs itself in here on first
+      # boot; the pack's own start.sh is deleted by fetch-modpack.sh.
       - /srv/mc/pack:/data
 
     environment:
       EULA: "TRUE"
-      TYPE: FORGE
+      TYPE: FABRIC
       VERSION: "1.20.1"
       # Matches LOADER_VERSION in deploy/modpack.lock, which came from the
-      # pack's own run.sh (libraries/.../forge/1.20.1-47.4.4). Left unset, the
+      # pack's own variables.txt (MODLOADER_VERSION=0.20.1). Left unset, the
       # image installs the newest loader — which usually works, and "usually"
       # is how a box stops being reproducible.
       #
@@ -44,7 +44,7 @@ services:
       # which is also a literal. That file holds secrets, and a loader version
       # is not one; putting it there would have made a version bump a reason to
       # open the one file on this Host that nothing is allowed to read.
-      FORGE_VERSION: "47.4.4"
+      FABRIC_LOADER_VERSION: "0.20.1"
       TZ: Asia/Bangkok
 
       # ── ADR-0002 / ADR-0005 ───────────────────────────────────────
@@ -54,17 +54,19 @@ services:
       SKIP_SERVER_PROPERTIES: "true"
 
       # ── heap ──────────────────────────────────────────────────────
-      # 7G for the first boot of The Casket of Reveries, and NOT YET MEASURED.
+      # 7G for the first boot of Prominence II, and NOT YET MEASURED.
       #
-      # The pack's page asks for "8GB+". That is a recommendation for a home
-      # PC, not a measurement on this Host. What was measured here: Homestead
-      # (Fabric 1.20.1, Java 17) ran 8G at 9.24 GiB RSS idle, and ATM10 To the
-      # Sky ran 7G at 8.84 GiB idle (ADR-0022). Both put 1.2-1.8 GiB beside the
-      # heap, and Epic Fight's animation data plus 159 mods of bosses, mobs and
-      # worldgen is not obviously lighter. 8G plus that is at the 10g
-      # mem_limit before a single player connects.
+      # The pack's guide asks for 8 GB for 3-4 players and its launcher sets
+      # -Xmx8G. That is a recommendation for a machine the pack has to itself,
+      # not a measurement on this Host. What was measured here: Homestead
+      # (Fabric 1.20.1, Java 17, 307 mods) ran 8G at 9.24 GiB RSS idle, ATM10
+      # To the Sky ran 7G at 8.84 GiB (ADR-0022) and The Casket of Reveries ran
+      # 7G at 8.03 GiB at first boot (ADR-0023). All put 1.0-1.8 GiB beside
+      # the heap, and 373 jars with Create, AE2, Modern Industrialization and
+      # Botania among them is not lighter than Homestead. 8G plus that is at
+      # the 10g mem_limit before a single player connects.
       #
-      # So the first boot is at 7G and ADR-0023 holds the gate that decides
+      # So the first boot is at 7G and ADR-0024 holds the gate that decides
       # whether it moves: measure memory.events and /proc/<pid>/status once it
       # is idle, again after a session with players, and raise to 8G only if
       # there is headroom.
@@ -117,11 +119,11 @@ services:
     #
     # The original reason was OpenTerrainGenerator, which no current pack has —
     # but the conclusion outlives the reason, and on this pack it is back at
-    # full strength. The Casket of Reveries generates real terrain through
-    # Tectonic, TerraBlender and Oh The Biomes We've Gone, plus When Dungeons
-    # Arise and Cataclysm structures, and that stalls the main thread for long
-    # enough to fail a 30s probe; first boot (Forge install, then mod
-    # construction) exceeds the 120s start period outright. What a
+    # full strength. Prominence II generates real terrain through TerraBlender
+    # and Regions Unexplored, BetterNether and BetterEnd, plus When Dungeons
+    # Arise and a dozen other structure mods, and that stalls the main thread
+    # for long enough to fail a 30s probe; first boot (Fabric install, then
+    # 373 mods initialising) exceeds the 120s start period outright. What a
     # healthcheck buys is an automatic restart; what it costs is that restart
     # arriving mid chunk-write. That trade was bad on Dregora and it is bad
     # here.
@@ -404,13 +406,13 @@ services:
       # ── The Chat Bridge ───────────────────────────────────────────
       # Both paths are inside the pack mount below, so the bridge adds no
       # access this container did not already have. The world directory is
-      # reveries and not `world` because that is what level-name says.
+      # prominence and not `world` because that is what level-name says.
       #
       # Reading the log FILE rather than `docker logs` is deliberate: the
       # container's stdout carries ANSI escapes from the pack's own colouring
       # (measured: `> [K[10:13:35] ...`), and the file on disk is clean.
       MC_LOG_PATH: /pack/logs/latest.log
-      MC_WORLD_DIR: /pack/reveries
+      MC_WORLD_DIR: /pack/prominence
       BRIDGE_POLL_MS: "2000"
       # Each scan asks the Game Server to flush the world first, because Better
       # Questing writes progress on save rather than on completion. Slow on

@@ -39,7 +39,7 @@ export default async function HomePage() {
   const address = info?.serverAddress ?? "tapestopnight.com";
   const version = info
     ? `Minecraft ${info.minecraftVersion} · ${info.loaderName} ${info.loaderVersion}`
-    : "Minecraft 1.20.1 · Forge";
+    : "Minecraft 1.20.1 · Fabric";
 
   return (
     <main>
@@ -110,7 +110,7 @@ export default async function HomePage() {
             }}
           >
             <p style={{ margin: 0, fontSize: "clamp(1.05rem, 2.4vw, 1.4rem)" }}>
-              {info?.modpackName ?? "The Casket of Reveries"}
+              {info?.modpackName ?? "Prominence II: Hasturian Era"}
             </p>
             <LiveStatus
               initial={{
