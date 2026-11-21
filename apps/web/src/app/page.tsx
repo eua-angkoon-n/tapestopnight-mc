@@ -55,7 +55,7 @@ export default async function HomePage() {
         */}
         <div
           className="media-still"
-          style={{ backgroundImage: `url("${mediaUrl("reveries-hero.webp")}")` }}
+          style={{ backgroundImage: `url("${mediaUrl("prominence-hero.webp")}")` }}
           aria-hidden="true"
         />
         <div className="scrim" />
