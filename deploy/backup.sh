@@ -88,7 +88,7 @@ backup_world() {
       return 0
     fi
 
-    # ── No pre-generation guard YET, and this pack needs one ────────
+    # ── The pre-generation guard lives in pregen-watch.sh, not here ──
     #
     # There used to be one here: save-off during a pregen queues the
     # generated chunks in the heap instead of on disk, next to a JVM already
@@ -98,11 +98,11 @@ backup_world() {
     # that left the Dregora version of this check worthless.
     #
     # Prominence II ships Chunky 1.3.146 (mods/Chunky-1.3.146.jar), so the
-    # hazard is back. The guard is deliberately NOT written from memory of
-    # what `chunky progress` prints: read its real output over RCON on this
-    # server, idle and with a task running, and match against that. Until
-    # then, do not start a pregen that will still be running at 05:00 —
-    # or disable the cron line for the duration, as on 2026-11-01.
+    # hazard is back, and it is met from the other side: deploy/pregen-watch.sh
+    # pauses its own task from 04:50 to 06:00 Bangkok time, which covers this
+    # script and the drift check after it. That holds only for a pregen the
+    # watcher started. One started by hand over RCON is not paused by anyone:
+    # do not leave one running across 05:00.
 
     log "pausing saves and flushing"
     trap saves_on EXIT
