@@ -70,8 +70,21 @@ of them.
 
 ## Measurements
 
-*Nothing taken yet.* Add the first-boot row, then a row after a session with players, then
-change `status` to `accepted`.
+Two rows so far, both inside the "stay at 7G" band or just under it. A row taken during
+pregeneration is still owed — that is the stress case — and `status` stays `proposed` until
+it is here.
 
 | When | Players | VmRSS | RssAnon | RssShmem | `max` events | Full GCs |
 |---|---|---|---|---|---|---|
+| 2026-11-20 21:22 ICT, 17 min after first boot | 1 | 9.07 GiB | 9.04 GiB | 0 | 0 | 2 (2062 ms, 981 ms; 7.1G → 1.6G) |
+| 2026-11-22 00:28 ICT, 27 h up | 5 | 8.35 GiB | not read | not read | 0 | 4 in total, all on the first evening |
+
+The second row is not the comfort it looks like. The live set after a young collection was
+about 2.2 GB, so memory is not what the server is short of — but the tick was: 43 `Can't
+keep up!` warnings in 26 minutes, the worst 39 seconds behind, with every player still inside
+the pack's pre-built `prominent:vaaz_*` dimensions. That is not world generation and a
+pregeneration will not cure it. It is recorded here so that nobody reads the heap numbers as
+"the server is fine".
+
+Pregeneration is paced by `deploy/pregen-watch.sh`: it runs only while the server is empty,
+and pauses on heap occupancy, on a full GC, and across the backup window.

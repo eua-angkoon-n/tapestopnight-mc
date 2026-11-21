@@ -1,0 +1,27 @@
+# Pre-generate the world while the server is empty. See deploy/pregen-watch.sh.
+#
+# Install with:  cp deploy/systemd/tapestopnight-pregen.service /etc/systemd/system/
+#                systemctl daemon-reload
+#                systemctl enable --now tapestopnight-pregen
+#
+# Stop with:     systemctl disable --now tapestopnight-pregen
+#
+# The script exits 0 when every task is finished, and on-failure does not
+# restart a clean exit — so a completed pregen stays completed.
+[Unit]
+Description=tapestopnight: pre-generate the Minecraft world while nobody is online
+After=docker.service
+Wants=docker.service
+
+[Service]
+Type=simple
+ExecStart=/srv/mc/repo/deploy/pregen-watch.sh
+# Belt and braces with the script's own trap: however this unit ends, the
+# generation it was pacing is paused. The leading "-" means a server that is
+# already down does not turn a stop into a failure.
+ExecStopPost=-/usr/bin/docker exec tapestopnight-mc rcon-cli "chunky pause"
+Restart=on-failure
+RestartSec=30
+
+[Install]
+WantedBy=multi-user.target
