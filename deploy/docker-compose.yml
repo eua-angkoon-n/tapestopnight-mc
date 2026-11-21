@@ -417,7 +417,13 @@ services:
       # Each scan asks the Game Server to flush the world first, because Better
       # Questing writes progress on save rather than on completion. Slow on
       # purpose — this is not a hot path and the flush is not free.
-      MILESTONE_SCAN_MS: "60000"
+      #
+      # Five minutes since 2026-11-20. Prominence II has 38 dimensions and a
+      # flush walks every one of them: at one a minute, 4 of the first 13
+      # flushes were followed at once by "Can't keep up" of 2 s or more, with
+      # one player online. A milestone announced up to five minutes late is
+      # the cheaper side of that trade.
+      MILESTONE_SCAN_MS: "300000"
 
     volumes:
       # ⚠ The same known privilege the web container carries, for the same
