@@ -81,6 +81,18 @@ await check("an IPv6 peer keeps its whole address", () => {
   assert.deepEqual(event, { kind: "login", name: "tapestopnight", ip: "2001:db8::1" });
 });
 
+await check("chat on Fabric, which prints no logger", () => {
+  const event = parseLine("[21:14:34] [Server thread/INFO]: <tapestopnight> ฟหกฟหก");
+  assert.deepEqual(event, { kind: "chat", name: "tapestopnight", body: "ฟหกฟหก" });
+});
+
+await check("login on Fabric", () => {
+  const event = parseLine(
+    "[21:06:00] [Server thread/INFO]: tapestopnight[/124.122.223.96:3372] logged in with entity id 1042 at (410.143, 29.0, 1084.357)",
+  );
+  assert.deepEqual(event, { kind: "login", name: "tapestopnight", ip: "124.122.223.96" });
+});
+
 console.log("\nlines that must be ignored");
 
 const IGNORED = [
@@ -92,6 +104,16 @@ const IGNORED = [
   "[10:12:36] [Server thread/INFO] [STDOUT]: [atomicstryker.battletowers.common.TowerStageItemManager:<init>:72]: parsed",
   "[14:12:40] [Server thread/INFO] [STDOUT]: [LycanitesMobs] [Info] Mob Event Started: Reptile Ruckus",
   "[10:13:34] [Server thread/INFO] [FML]: Unloading dimension 1",
+  // Prominence II on Fabric, from the real log. No logger to anchor on, so
+  // these are refused by the shape of the payload alone.
+  "[00:05:18] [Server thread/INFO]: [Handshake] Sending channel query",
+  "[00:05:18] [Server thread/INFO]: First spawn: placing new player GUSCHAN directly in Vaaz",
+  "[00:34:19] [Server thread/INFO]: TexTureEz was slain by Zombie",
+  "[00:12:14] [Server thread/INFO]: GUSCHAN joined the game",
+  "[00:20:11] [Server thread/INFO]: GUSCHAN has made the advancement ['X' Marks the Spot]",
+  "[00:09:40] [Server thread/INFO]: ThreadedAnvilChunkStorage (prominence): All chunks are saved",
+  // An RCON-thread line on Fabric must stay as invisible as it is on Forge.
+  "[16:52:51] [RCON Client #6/INFO]: <tapestopnight> not really a player",
   "",
   "not a log line at all",
 ];
