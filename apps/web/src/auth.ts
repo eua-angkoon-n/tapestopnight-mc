@@ -98,6 +98,133 @@ async function decideAdmin(
   }
 }
 
+/*
+  Where a role verdict is remembered: in this process, not only in the cookie.
+
+  The verdict used to live in the JWT alone. That works only where the JWT can
+  be written back, and most of this site cannot do that: pages call auth() from
+  server components, which may read the session cookie but never set one. So a
+  check made during a page render was thrown away with the response, and the
+  next render — holding the same stale cookie — made it again.
+
+  Measured on 2026-11-22. A sign-in at 00:51 checked once and stored the result
+  (the callback route can set cookies). Five minutes later the TTL lapsed; the
+  next page load asked Discord again, successfully, and could not keep the
+  answer; the load seven seconds after that asked a third time and was told 429
+  with a Retry-After of 293 seconds. Nor could THAT be kept, so every load
+  after it asked again and was refused again. The admin saw "ตรวจสิทธิ์กับ
+  Discord ไม่สำเร็จ" until they stopped loading pages for five minutes — the
+  check that "failed quite often and seemed to recover at random", explained.
+
+  One web container serves the whole site, so a Map here is shared by every
+  request and survives between them. A restart empties it, which costs one
+  check per signed-in admin and nothing else.
+*/
+interface RoleVerdict {
+  isAdmin: boolean;
+  via: "guild-role" | "break-glass" | null;
+  /** Discord could not be asked. Distinct from being asked and told no. */
+  failed: boolean;
+  rateLimited: boolean;
+  /** When a good answer was obtained; 0 if the last attempt failed. */
+  checkedAt: number;
+  failures: number;
+  /** After a failure: do not ask again before this. */
+  notBefore: number;
+}
+
+const verdicts = new Map<string, RoleVerdict>();
+
+/**
+ * Checks already on their way to Discord, by user. A page render calls auth()
+ * from several components at once; without this each of them would start its
+ * own request, and the endpoint's budget is small enough that the second one
+ * is the 429.
+ */
+const inFlight = new Map<string, Promise<RoleVerdict>>();
+
+function isCurrent(verdict: RoleVerdict | undefined, now: number): verdict is RoleVerdict {
+  if (!verdict) return false;
+  return verdict.failed ? now < verdict.notBefore : now - verdict.checkedAt <= ROLE_TTL_MS;
+}
+
+async function askDiscord(discordId: string, accessToken: string): Promise<RoleVerdict> {
+  try {
+    const member = await fetchGuildMember(accessToken, GUILD_ID);
+    const decision = await decideAdmin(discordId, member?.roleIds ?? []);
+    if (!member) {
+      // A 404 from Discord means "not in that guild", which is a real
+      // answer rather than an error — and a confusing one if the guild
+      // id is wrong, so say which guild was asked about.
+      console.warn(`[auth] ${discordId} is not a member of guild ${GUILD_ID}`);
+    }
+    return {
+      isAdmin: decision.isAdmin,
+      via: decision.via,
+      failed: false,
+      rateLimited: false,
+      checkedAt: Date.now(),
+      failures: 0,
+      notBefore: 0,
+    };
+  } catch (err) {
+    /*
+      Discord is unreachable. Do NOT extend the previous verdict on the
+      strength of a failed check — drop to non-admin and let the next
+      attempt recover. The break-glass allowlist in Postgres is what covers
+      a genuine Discord outage, and decideAdmin consults it.
+
+      LOG IT. This catch used to be silent, and a silent catch here
+      produces the single most confusing symptom this app can have: an
+      admin who holds the right role is told they are not an admin, with
+      nothing anywhere saying why. Diagnosing that cost a round trip
+      through the Discord API to prove the role was fine all along.
+    */
+    const apiErr = err instanceof DiscordApiError ? err : null;
+    const failures = (verdicts.get(discordId)?.failures ?? 0) + 1;
+    const wait = backoffMs(failures, apiErr?.retryAfterMs ?? null);
+
+    const status = apiErr ? ` status=${apiErr.status}` : "";
+    const told = apiErr?.retryAfterMs != null ? " (Discord's Retry-After)" : "";
+    console.error(
+      `[auth] role check FAILED for ${discordId}${status}: ` +
+        `${err instanceof Error ? err.message : String(err)} — ` +
+        `denying admin, attempt ${failures}, next try in ` +
+        `${Math.round(wait / 1000)}s${told}`,
+    );
+    return {
+      isAdmin: false,
+      via: null,
+      failed: true,
+      rateLimited: apiErr?.status === 429,
+      checkedAt: 0,
+      failures,
+      notBefore: Date.now() + wait,
+    };
+  }
+}
+
+/**
+ * The current verdict for one user, asking Discord only when the remembered
+ * one has gone stale — or, after a failure, only once its backoff has run out.
+ */
+async function roleVerdict(discordId: string, accessToken: string): Promise<RoleVerdict> {
+  const known = verdicts.get(discordId);
+  if (isCurrent(known, Date.now())) return known;
+
+  const pending = inFlight.get(discordId);
+  if (pending) return pending;
+
+  const asking = askDiscord(discordId, accessToken)
+    .then((verdict) => {
+      verdicts.set(discordId, verdict);
+      return verdict;
+    })
+    .finally(() => inFlight.delete(discordId));
+  inFlight.set(discordId, asking);
+  return asking;
+}
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
     Discord({
@@ -121,72 +248,32 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async jwt({ token, account, profile }) {
       // Fresh sign-in: keep the Discord access token so roles can be re-read
       // later without forcing the user through the OAuth dance again.
+      //
+      // Signing in does NOT force a new role check. It used to, and against a
+      // rate limit that is the wrong reflex: the person most likely to sign in
+      // again is the one who has just been told the check failed, and a forced
+      // check is one more request against the limit that is refusing them.
       if (account?.access_token) {
         token.discordAccessToken = account.access_token;
         token.discordId = (profile as { id?: string } | undefined)?.id ?? token.sub ?? "";
-        token.rolesCheckedAt = 0; // force a check on this very first pass
       }
 
-      const checkedAt = (token.rolesCheckedAt as number | undefined) ?? 0;
       const accessToken = token.discordAccessToken as string | undefined;
       const discordId = (token.discordId as string | undefined) ?? "";
 
-      const now = Date.now();
-      const notBefore = (token.roleRetryNotBefore as number | undefined) ?? 0;
-
-      // Two separate gates. The TTL says a good answer has gone stale; the
-      // backoff says a bad answer is not worth re-asking yet. Both must allow
-      // it, or a failing check re-arms itself every request.
-      if (accessToken && discordId && now - checkedAt > ROLE_TTL_MS && now >= notBefore) {
-        try {
-          const member = await fetchGuildMember(accessToken, GUILD_ID);
-          const decision = await decideAdmin(discordId, member?.roleIds ?? []);
-          token.isAdmin = decision.isAdmin;
-          token.adminVia = decision.via;
-          token.adminCheckFailed = false;
-          token.rolesCheckedAt = Date.now();
-          token.roleFailures = 0;
-          token.roleRetryNotBefore = 0;
-          token.adminCheckRateLimited = false;
-          if (!member) {
-            // A 404 from Discord means "not in that guild", which is a real
-            // answer rather than an error — and a confusing one if the guild
-            // id is wrong, so say which guild was asked about.
-            console.warn(`[auth] ${discordId} is not a member of guild ${GUILD_ID}`);
-          }
-        } catch (err) {
-          /*
-            Discord is unreachable. Do NOT extend the previous verdict on the
-            strength of a failed check — drop to non-admin and let the next
-            tick recover. The break-glass allowlist in Postgres is what covers
-            a genuine Discord outage, and decideAdmin consults it.
-
-            LOG IT. This catch used to be silent, and a silent catch here
-            produces the single most confusing symptom this app can have: an
-            admin who holds the right role is told they are not an admin, with
-            nothing anywhere saying why. Diagnosing that cost a round trip
-            through the Discord API to prove the role was fine all along.
-          */
-          const apiErr = err instanceof DiscordApiError ? err : null;
-          const failures = ((token.roleFailures as number | undefined) ?? 0) + 1;
-          const wait = backoffMs(failures, apiErr?.retryAfterMs ?? null);
-
-          const status = apiErr ? ` status=${apiErr.status}` : "";
-          const told = apiErr?.retryAfterMs != null ? " (Discord's Retry-After)" : "";
-          console.error(
-            `[auth] role check FAILED for ${discordId}${status}: ` +
-              `${err instanceof Error ? err.message : String(err)} — ` +
-              `denying admin, attempt ${failures}, next try in ` +
-              `${Math.round(wait / 1000)}s${told}`,
-          );
-          token.isAdmin = false;
-          token.adminVia = null;
-          token.adminCheckFailed = true;
-          token.rolesCheckedAt = 0;
-          token.roleFailures = failures;
-          token.roleRetryNotBefore = Date.now() + wait;
-          token.adminCheckRateLimited = apiErr?.status === 429;
-        }
+      // The verdict is copied onto the token every time, from this process's
+      // memory. The token is then only a carrier: whether or not this
+      // particular request is able to write the cookie back makes no
+      // difference to how often Discord is asked. See roleVerdict.
+      if (accessToken && discordId) {
+        const verdict = await roleVerdict(discordId, accessToken);
+        token.isAdmin = verdict.isAdmin;
+        token.adminVia = verdict.via;
+        token.adminCheckFailed = verdict.failed;
+        token.adminCheckRateLimited = verdict.rateLimited;
+        token.rolesCheckedAt = verdict.checkedAt;
+        token.roleFailures = verdict.failures;
+        token.roleRetryNotBefore = verdict.notBefore;
       }
 
       return token;
