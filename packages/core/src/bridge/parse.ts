@@ -28,12 +28,18 @@ export type BridgeEvent =
   | { readonly kind: "login"; readonly name: string; readonly ip: string };
 
 /**
- * `[HH:MM:SS] [<thread>/<level>] [<logger>]: <payload>`
+ * `[HH:MM:SS] [<thread>/<level>] [<logger>]: <payload>`   Forge, NeoForge
+ * `[HH:MM:SS] [<thread>/<level>]: <payload>`              Fabric
+ *
+ * The logger is optional because Fabric's log4j pattern does not print one.
+ * Captured on the Host from Prominence II, 2026-11-20:
+ *
+ *   [21:14:34] [Server thread/INFO]: <tapestopnight> ฟหกฟหก
  *
  * The line carries NO date — only a wall clock. Every event is therefore
  * stamped with the reader's own clock, never with anything parsed from here.
  */
-const LINE = /^\[\d{2}:\d{2}:\d{2}\] \[([^\]/]+)\/[A-Z]+\] \[([^\]]+)\]: (.*)$/;
+const LINE = /^\[\d{2}:\d{2}:\d{2}\] \[([^\]/]+)\/[A-Z]+\](?: \[([^\]]+)\])?: (.*)$/;
 
 /** Only this thread is a real player. See the note above. */
 const PLAYER_THREAD = "Server thread";
@@ -46,6 +52,13 @@ const PLAYER_THREAD = "Server thread";
  * carrying Java constructor names in angle brackets. Anchoring on the logger
  * that vanilla actually uses removes that entire class of false positive
  * instead of playing whack-a-mole with the payload pattern.
+ *
+ * On Fabric there is no logger to anchor on, so a line without one is judged
+ * by its payload alone: a valid player name in angle brackets at the very
+ * start, or the exact login sentence. Mods on Fabric announce themselves
+ * inside the payload — `[Chunky] …`, `[Handshake] …` — which neither pattern
+ * can match. A line that DOES carry a logger is still held to the exact
+ * names below, so nothing is loosened for the loaders that print one.
  */
 const CHAT_LOGGER = "net.minecraft.server.dedicated.DedicatedServer";
 const LOGIN_LOGGER = "net.minecraft.server.management.PlayerList";
@@ -72,13 +85,13 @@ export function parseLine(line: string): BridgeEvent | null {
   const [, thread, logger, payload] = matched;
   if (thread !== PLAYER_THREAD || payload === undefined) return null;
 
-  if (logger === LOGIN_LOGGER) {
+  if (logger === LOGIN_LOGGER || logger === undefined) {
     const login = LOGIN.exec(payload);
-    if (!login?.[1] || !login[2]) return null;
-    return { kind: "login", name: login[1], ip: login[2] };
+    if (login?.[1] && login[2]) return { kind: "login", name: login[1], ip: login[2] };
+    if (logger !== undefined) return null;
   }
 
-  if (logger !== CHAT_LOGGER) return null;
+  if (logger !== CHAT_LOGGER && logger !== undefined) return null;
 
   const chat = CHAT.exec(payload);
   if (!chat?.[1] || !chat[2]) return null;

@@ -103,6 +103,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     Discord({
       authorization:
         "https://discord.com/oauth2/authorize?scope=identify+guilds.members.read",
+      // Discord began returning an `iss` parameter on the OAuth callback
+      // (RFC 9207). Auth.js checks it against the provider's issuer, and for a
+      // provider with none configured that is the placeholder
+      // "https://authjs.dev" — so from then on every sign-in died in the
+      // callback with `unexpected "iss" (issuer) response parameter value`
+      // (seen in this container's log, 2026-11-21). Naming the issuer is the
+      // whole fix; no discovery is attempted because the token and userinfo
+      // endpoints are already explicit in the provider.
+      issuer: "https://discord.com",
     }),
   ],
 
